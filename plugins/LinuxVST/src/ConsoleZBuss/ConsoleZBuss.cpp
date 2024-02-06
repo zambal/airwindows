@@ -13,13 +13,13 @@ ConsoleZBuss::ConsoleZBuss(audioMasterCallback audioMaster) :
     AudioEffectX(audioMaster, kNumPrograms, kNumParameters)
 {
 //LABuss
-	A = 1.0;
+	A = 0.5;
 // Desk4
-	B = 0.27;
-	C = 0.18;
-	D = 0.26;
-	E = 0.54;
-	F = 0.84;
+	B = 0.0;
+	C = 0.0;
+	D = 0.0;
+	E = 0.0;
+	F = 0.0;
 	G = 0.0;
 // Buttercomp2
 	H = 0.0;
@@ -28,13 +28,13 @@ ConsoleZBuss::ConsoleZBuss(audioMasterCallback audioMaster) :
 // VariMu
 	K = 0.0;
 	L = 0.5;
-	M = 1.0;
+	M = 0.0;
 	N = 0.0;
 // BussColors4
 	O = 0.0;
 	P = 0.5;
 	Q = 0.5;
-	R = 1.0;
+	R = 0.0;
 
 
 // ConsoleLABuss
@@ -284,7 +284,7 @@ void ConsoleZBuss::getParameterName(VstInt32 index, char *text) {
 
 void ConsoleZBuss::getParameterDisplay(VstInt32 index, char *text) {
     switch (index) {
-        case kParamA: float2string (A, text, kVstMaxParamStrLen); break;
+        case kParamA: float2string (2.0 * A, text, kVstMaxParamStrLen); break;
         case kParamB: float2string (B, text, kVstMaxParamStrLen); break;
         case kParamC: float2string (C, text, kVstMaxParamStrLen); break;
         case kParamD: float2string (D, text, kVstMaxParamStrLen); break;

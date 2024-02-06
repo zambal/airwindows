@@ -22,7 +22,7 @@ void ConsoleZBuss::processReplacing(float **inputs, float **outputs, VstInt32 sa
 	// ConsoleLABuss
 
 	gainA = gainB;
-	gainB = sqrt(A); //smoothed master fader from Z2 filters
+	gainB = sqrt(2.0 * A); //smoothed master fader from Z2 filters
 	//this will be applied three times: this is to make the various tone alterations
 	//hit differently at different master fader drive levels.
 	//in particular, backing off the master fader tightens the super lows
@@ -315,7 +315,7 @@ void ConsoleZBuss::processReplacing(float **inputs, float **outputs, VstInt32 sa
 		inputSampleR -= (subSampleR*16.0);
 		//end SubTight section
 
-		if (la_gain < 1.0) {
+		if (la_gain != 1.0) {
 			inputSampleL *= la_gain;
 			inputSampleR *= la_gain;
 		} //if using the master fader, we are going to attenuate three places.
@@ -333,7 +333,7 @@ void ConsoleZBuss::processReplacing(float **inputs, float **outputs, VstInt32 sa
 		else inputSampleR = -(inputSampleR*-2.0)/(3.0+inputSampleR);
 		//ConsoleZero Buss
 
-		if (la_gain < 1.0) {
+		if (la_gain != 1.0) {
 			inputSampleL *= la_gain;
 			inputSampleR *= la_gain;
 		} //if using the master fader, we are going to attenuate three places.
@@ -357,7 +357,7 @@ void ConsoleZBuss::processReplacing(float **inputs, float **outputs, VstInt32 sa
 		if (-clamp > sinew) temp = lastSinewR - sinew;
 		inputSampleR = lastSinewR = temp;
 
-		if (la_gain < 1.0) {
+		if (la_gain != 1.0) {
 			inputSampleL *= la_gain;
 			inputSampleR *= la_gain;
 		} //if using the master fader, we are going to attenuate three places.
