@@ -21,7 +21,13 @@ enum {
 	kParamC = 2,
 	kParamD = 3,
 	kParamE = 4,
-  kNumParameters = 5
+	kParamF = 5,
+	kParamG = 6,
+	kParamH = 7,
+	kParamI = 8,
+	kParamJ = 9,
+	kParamK = 10,
+  kNumParameters = 11
 }; //
 
 const int kNumPrograms = 0;
@@ -68,28 +74,12 @@ private:
 	double iirSampleDL;
 	double iirSampleEL;
 	double iirSampleFL;
-	double i_lastSampleL;
 	double iirSampleAR;
 	double iirSampleBR;
 	double iirSampleCR;
 	double iirSampleDR;
 	double iirSampleER;
 	double iirSampleFR;
-	double i_lastSampleR;
-	bool i_flip;
-
-  // Baxandall2
-
-	double trebleAL[9];
-	double trebleBL[9];
-	double bassAL[9];
-	double bassBL[9];
-
-	double trebleAR[9];
-	double trebleBR[9];
-	double bassAR[9];
-	double bassBR[9];
-
 
   // Tape
 
@@ -117,15 +107,34 @@ private:
 	double lastSampleL;
 	double lastSampleR;
 
+  // Creature
+
+	double slewL[102]; //probably worth just using a number here
+	double slewR[102]; //probably worth just using a number here
+  
+  // ToneSlant
+
+	double ts_bL[102];
+	double ts_bR[102];
+	double ts_f[102];		
+
 	uint32_t fpdL;
 	uint32_t fpdR;
 	//default stuff
 
-    float A;
-    float B;
-    float C;
-    float D;
-    float E;
+  // Parameters
+
+  float A;
+  float B;
+  float C;
+  float D;
+  float E;
+  float F;
+  float G;
+  float H;
+  float I;
+  float J;
+  float K;
 };
 
 #endif

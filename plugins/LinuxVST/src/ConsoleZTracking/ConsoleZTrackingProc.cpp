@@ -9,18 +9,77 @@
 
 void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt32 sampleFrames)
 {
-    float* in1  =  inputs[0];
-    float* in2  =  inputs[1];
-    float* out1 = outputs[0];
-    float* out2 = outputs[1];
+  float* in1  =  inputs[0];
+  float* in2  =  inputs[1];
+  float* out1 = outputs[0];
+  float* out2 = outputs[1];
+
+	bool enableUltrasonic = I > 0.0;
+	bool enableInterstage = J > 0.0;
+	bool enableuLaw = K > 0.0;
+
+	double drySampleL;
+	double drySampleR;
 
 	double overallscale = 1.0;
 	overallscale /= 44100.0;
 	overallscale *= getSampleRate();
 
+	// UltrasonicLite
+
+	double KK;
+	double u_norm;
+
+	if(enableUltrasonic) {
+		biquadA[0] = 24000.0 / getSampleRate();
+		if (getSampleRate() < 88000.0) biquadA[0] = 21000.0 / getSampleRate();
+	    biquadA[1] = 0.70710678;
+
+		KK = tan(M_PI * biquadA[0]); //lowpass
+		u_norm = 1.0 / (1.0 + KK / biquadA[1] + KK * KK);
+		biquadA[2] = KK * KK * u_norm;
+		biquadA[3] = 2.0 * biquadA[2];
+		biquadA[4] = biquadA[2];
+		biquadA[5] = 2.0 * (KK * KK - 1.0) * u_norm;
+		biquadA[6] = (1.0 - KK / biquadA[1] + KK * KK) * u_norm;
+	}
+
+	// Interstage
+
+	double firstStage = 0.381966011250105 / overallscale;
+	double iirAmount = 0.00295 / overallscale;
+	double threshold = 0.381966011250105;
+
+	// Tape
+
+	double inputgain = pow(10.0,((A-0.5)*24.0)/20.0);
+	double bumpgain = B*0.1;
+	double HeadBumpFreq = 0.12/overallscale;
+	double softness = 0.618033988749894848204586;
+	double RollAmount = (1.0 - softness) / overallscale;
+	//[0] is frequency: 0.000001 to 0.499999 is near-zero to near-Nyquist
+	//[1] is resonance, 0.7071 is Butterworth. Also can't be zero
+	biquadAL[0] = biquadBL[0] = biquadAR[0] = biquadBR[0] = 0.0072/overallscale;
+	biquadAL[1] = biquadBL[1] = biquadAR[1] = biquadBR[1] = 0.0009;
+	double K = tan(M_PI * biquadBR[0]);
+	double norm = 1.0 / (1.0 + K / biquadBR[1] + K * K);
+	biquadAL[2] = biquadBL[2] = biquadAR[2] = biquadBR[2] = K / biquadBR[1] * norm;
+	biquadAL[4] = biquadBL[4] = biquadAR[4] = biquadBR[4] = -biquadBR[2];
+	biquadAL[5] = biquadBL[5] = biquadAR[5] = biquadBR[5] = 2.0 * (K * K - 1.0) * norm;
+	biquadAL[6] = biquadBL[6] = biquadAR[6] = biquadBR[6] = (1.0 - K / biquadBR[1] + K * K) * norm;
+
+	biquadCL[0] = biquadDL[0] = biquadCR[0] = biquadDR[0] = 0.032/overallscale;
+	biquadCL[1] = biquadDL[1] = biquadCR[1] = biquadDR[1] = 0.0007;
+	K = tan(M_PI * biquadDR[0]);
+	norm = 1.0 / (1.0 + K / biquadDR[1] + K * K);
+	biquadCL[2] = biquadDL[2] = biquadCR[2] = biquadDR[2] = K / biquadDR[1] * norm;
+	biquadCL[4] = biquadDL[4] = biquadCR[4] = biquadDR[4] = -biquadDR[2];
+	biquadCL[5] = biquadDL[5] = biquadCR[5] = biquadDR[5] = 2.0 * (K * K - 1.0) * norm;
+	biquadCL[6] = biquadDL[6] = biquadCR[6] = biquadDR[6] = (1.0 - K / biquadDR[1] + K * K) * norm;
+
 	// BitshiftGain
 
-	int bitshiftGain = (A * 32)-16;
+	int bitshiftGain = (C * 32)-16;
 	double gain = 1.0;
 	switch (bitshiftGain)
 	{
@@ -60,203 +119,105 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
 	}
 	//we are directly punching in the gain values rather than calculating them
 
-	// UltrasonicLite
+	// Creature
 
-	biquadA[0] = 24000.0 / getSampleRate();
-	if (getSampleRate() < 88000.0) biquadA[0] = 21000.0 / getSampleRate();
-    biquadA[1] = 0.70710678;
+	double source = 1.0-pow(1.0-D,5);
+	int stages = (pow(E,2)*32.0*sqrt(overallscale))+1;
+	double wet = (F*2.0)-1.0; //inv-dry-wet for highpass
+	double dry = 2.0-(F*2.0);
+	if (dry > 1.0) dry = 1.0; //full dry for use with inv, to 0.0 at full wet
 
-	double KK = tan(M_PI * biquadA[0]); //lowpass
-	double u_norm = 1.0 / (1.0 + KK / biquadA[1] + KK * KK);
-	biquadA[2] = KK * KK * u_norm;
-	biquadA[3] = 2.0 * biquadA[2];
-	biquadA[4] = biquadA[2];
-	biquadA[5] = 2.0 * (KK * KK - 1.0) * u_norm;
-	biquadA[6] = (1.0 - KK / biquadA[1] + KK * KK) * u_norm;
 
-	// Interstage
+	// ToneSlant
 
-	double firstStage = 0.381966011250105 / overallscale;
-	double iirAmount = 0.00295 / overallscale;
-	double threshold = 0.381966011250105;
 
-	// Baxandall2
+	double ts_inputSampleL;
+	double ts_inputSampleR;
+	double ts_correctionSampleL;
+	double ts_correctionSampleR;
+	double ts_accumulatorSampleL;
+	double ts_accumulatorSampleR;
+	double ts_drySampleL;
+	double ts_drySampleR;
+	double ts_overallscale = (G*99.0)+1.0;
+	double ts_applySlant = (H*2.0)-1.0;
+	
+	
+	ts_f[0] = 1.0 / ts_overallscale;
+	//count to f(gain) which will be 0. f(0) is x1
+	for (int count = 1; count < 102; count++) {
+		if (count <= ts_overallscale) {
+			ts_f[count] = (1.0 - (count / ts_overallscale)) / ts_overallscale;
+			//recalc the filter and don't change the buffer it'll apply to
+		} else {
+			ts_bL[count] = 0.0; //blank the unused buffer so when we return to it, no pops
+			ts_bR[count] = 0.0; //blank the unused buffer so when we return to it, no pops
+		}
+	}
 
-	double trebleGain = pow(10.0,((B*48.0)-24.0)/20.0);
-	double trebleFreq = (4410.0*trebleGain)/getSampleRate();
-	if (trebleFreq > 0.45) trebleFreq = 0.45;
-	trebleAL[0] = trebleBL[0] = trebleAR[0] = trebleBR[0] = trebleFreq;
-	double bassGain = pow(10.0,((C*48.0)-24.0)/20.0);
-	double bassFreq = pow(10.0,-((C*48.0)-24.0)/20.0);
-	bassFreq = (8820.0*bassFreq)/getSampleRate();
-	if (bassFreq > 0.45) bassFreq = 0.45;
-	bassAL[0] = bassBL[0] = bassAR[0] = bassBR[0] = bassFreq;
-    trebleAL[1] = trebleBL[1] = trebleAR[1] = trebleBR[1] = 0.4;
-    bassAL[1] = bassBL[1] = bassAR[1] = bassBR[1] = 0.2;
+  while (--sampleFrames >= 0)
+  {
 
-	double b_K = tan(M_PI * trebleAL[0]);
-	double b_norm = 1.0 / (1.0 + b_K / trebleAL[1] + b_K * b_K);
-	trebleBL[2] = trebleAL[2] = trebleBR[2] = trebleAR[2] = b_K * b_K * b_norm;
-	trebleBL[3] = trebleAL[3] = trebleBR[3] = trebleAR[3] = 2.0 * trebleAL[2];
-	trebleBL[4] = trebleAL[4] = trebleBR[4] = trebleAR[4] = trebleAL[2];
-	trebleBL[5] = trebleAL[5] = trebleBR[5] = trebleAR[5] = 2.0 * (b_K * b_K - 1.0) * b_norm;
-	trebleBL[6] = trebleAL[6] = trebleBR[6] = trebleAR[6] = (1.0 - b_K / trebleAL[1] + b_K * b_K) * b_norm;
-
-	b_K = tan(M_PI * bassAL[0]);
-	b_norm = 1.0 / (1.0 + b_K / bassAL[1] + b_K * b_K);
-	bassBL[2] = bassAL[2] = bassBR[2] = bassAR[2] = b_K * b_K * b_norm;
-	bassBL[3] = bassAL[3] = bassBR[3] = bassAR[3] = 2.0 * bassAL[2];
-	bassBL[4] = bassAL[4] = bassBR[4] = bassAR[4] = bassAL[2];
-	bassBL[5] = bassAL[5] = bassBR[5] = bassAR[5] = 2.0 * (b_K * b_K - 1.0) * b_norm;
-	bassBL[6] = bassAL[6] = bassBR[6] = bassAR[6] = (1.0 - b_K / bassAL[1] + b_K * b_K) * b_norm;
-
-	// Tape
-
-	double inputgain = pow(10.0,((D-0.5)*24.0)/20.0);
-	double bumpgain = E*0.1;
-	double HeadBumpFreq = 0.12/overallscale;
-	double softness = 0.618033988749894848204586;
-	double RollAmount = (1.0 - softness) / overallscale;
-	//[0] is frequency: 0.000001 to 0.499999 is near-zero to near-Nyquist
-	//[1] is resonance, 0.7071 is Butterworth. Also can't be zero
-	biquadAL[0] = biquadBL[0] = biquadAR[0] = biquadBR[0] = 0.0072/overallscale;
-	biquadAL[1] = biquadBL[1] = biquadAR[1] = biquadBR[1] = 0.0009;
-	double K = tan(M_PI * biquadBR[0]);
-	double norm = 1.0 / (1.0 + K / biquadBR[1] + K * K);
-	biquadAL[2] = biquadBL[2] = biquadAR[2] = biquadBR[2] = K / biquadBR[1] * norm;
-	biquadAL[4] = biquadBL[4] = biquadAR[4] = biquadBR[4] = -biquadBR[2];
-	biquadAL[5] = biquadBL[5] = biquadAR[5] = biquadBR[5] = 2.0 * (K * K - 1.0) * norm;
-	biquadAL[6] = biquadBL[6] = biquadAR[6] = biquadBR[6] = (1.0 - K / biquadBR[1] + K * K) * norm;
-
-	biquadCL[0] = biquadDL[0] = biquadCR[0] = biquadDR[0] = 0.032/overallscale;
-	biquadCL[1] = biquadDL[1] = biquadCR[1] = biquadDR[1] = 0.0007;
-	K = tan(M_PI * biquadDR[0]);
-	norm = 1.0 / (1.0 + K / biquadDR[1] + K * K);
-	biquadCL[2] = biquadDL[2] = biquadCR[2] = biquadDR[2] = K / biquadDR[1] * norm;
-	biquadCL[4] = biquadDL[4] = biquadCR[4] = biquadDR[4] = -biquadDR[2];
-	biquadCL[5] = biquadDL[5] = biquadCR[5] = biquadDR[5] = 2.0 * (K * K - 1.0) * norm;
-	biquadCL[6] = biquadDL[6] = biquadCR[6] = biquadDR[6] = (1.0 - K / biquadDR[1] + K * K) * norm;
-
-    while (--sampleFrames >= 0)
-    {
-
-		// BitshiftGain
-
-		double inputSampleL = *in1 * gain;
-		double inputSampleR = *in2 * gain;
+		double inputSampleL = *in1;
+		double inputSampleR = *in2;
 
 		if (fabs(inputSampleL)<1.18e-23) inputSampleL = fpdL * 1.18e-17;
 		if (fabs(inputSampleR)<1.18e-23) inputSampleR = fpdR * 1.18e-17;
 
 		// UltrasonicLite
 
-		double outSampleL = biquadA[2]*inputSampleL+biquadA[3]*biquadA[7]+biquadA[4]*biquadA[8]-biquadA[5]*biquadA[9]-biquadA[6]*biquadA[10];
-		biquadA[8] = biquadA[7]; biquadA[7] = inputSampleL; inputSampleL = outSampleL; biquadA[10] = biquadA[9]; biquadA[9] = inputSampleL; //DF1 left
+		if(enableUltrasonic) {
+			double outSampleL = biquadA[2]*inputSampleL+biquadA[3]*biquadA[7]+biquadA[4]*biquadA[8]-biquadA[5]*biquadA[9]-biquadA[6]*biquadA[10];
+			biquadA[8] = biquadA[7]; biquadA[7] = inputSampleL; inputSampleL = outSampleL; biquadA[10] = biquadA[9]; biquadA[9] = inputSampleL; //DF1 left
 
-		double outSampleR = biquadA[2]*inputSampleR+biquadA[3]*biquadA[11]+biquadA[4]*biquadA[12]-biquadA[5]*biquadA[13]-biquadA[6]*biquadA[14];
-		biquadA[12] = biquadA[11]; biquadA[11] = inputSampleR; inputSampleR = outSampleR; biquadA[14] = biquadA[13]; biquadA[13] = inputSampleR; //DF1 right
+			double outSampleR = biquadA[2]*inputSampleR+biquadA[3]*biquadA[11]+biquadA[4]*biquadA[12]-biquadA[5]*biquadA[13]-biquadA[6]*biquadA[14];
+			biquadA[12] = biquadA[11]; biquadA[11] = inputSampleR; inputSampleR = outSampleR; biquadA[14] = biquadA[13]; biquadA[13] = inputSampleR; //DF1 right
+		}
 
 		// Interstage
 
-		double drySampleL = inputSampleL;
-		double drySampleR = inputSampleR;
+		if(enableInterstage) {
+			drySampleL = inputSampleL;
+			drySampleR = inputSampleR;
 
-		if (i_flip) {
-			iirSampleAL = (iirSampleAL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleAL;
-			iirSampleCL = (iirSampleCL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleCL;
-			iirSampleEL = (iirSampleEL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleEL;
-			inputSampleL = drySampleL - inputSampleL;
-			//make highpass
-			if (inputSampleL - iirSampleAL > threshold) inputSampleL = iirSampleAL + threshold;
-			if (inputSampleL - iirSampleAL < -threshold) inputSampleL = iirSampleAL - threshold;
-			//slew limit against lowpassed reference point
+			if (flip) {
+				iirSampleAL = (iirSampleAL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleAL;
+				iirSampleCL = (iirSampleCL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleCL;
+				iirSampleEL = (iirSampleEL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleEL;
+				inputSampleL = drySampleL - inputSampleL;
+				//make highpass
+				if (inputSampleL - iirSampleAL > threshold) inputSampleL = iirSampleAL + threshold;
+				if (inputSampleL - iirSampleAL < -threshold) inputSampleL = iirSampleAL - threshold;
+				//slew limit against lowpassed reference point
 
-			iirSampleAR = (iirSampleAR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleAR;
-			iirSampleCR = (iirSampleCR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleCR;
-			iirSampleER = (iirSampleER * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleER;
-			inputSampleR = drySampleR - inputSampleR;
-			//make highpass
-			if (inputSampleR - iirSampleAR > threshold) inputSampleR = iirSampleAR + threshold;
-			if (inputSampleR - iirSampleAR < -threshold) inputSampleR = iirSampleAR - threshold;
-			//slew limit against lowpassed reference point
-		} else {
-			iirSampleBL = (iirSampleBL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleBL;
-			iirSampleDL = (iirSampleDL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleDL;
-			iirSampleFL = (iirSampleFL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleFL;
-			inputSampleL = drySampleL - inputSampleL;
-			//make highpass
-			if (inputSampleL - iirSampleBL > threshold) inputSampleL = iirSampleBL + threshold;
-			if (inputSampleL - iirSampleBL < -threshold) inputSampleL = iirSampleBL - threshold;
-			//slew limit against lowpassed reference point
+				iirSampleAR = (iirSampleAR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleAR;
+				iirSampleCR = (iirSampleCR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleCR;
+				iirSampleER = (iirSampleER * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleER;
+				inputSampleR = drySampleR - inputSampleR;
+				//make highpass
+				if (inputSampleR - iirSampleAR > threshold) inputSampleR = iirSampleAR + threshold;
+				if (inputSampleR - iirSampleAR < -threshold) inputSampleR = iirSampleAR - threshold;
+				//slew limit against lowpassed reference point
+			} else {
+				iirSampleBL = (iirSampleBL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleBL;
+				iirSampleDL = (iirSampleDL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleDL;
+				iirSampleFL = (iirSampleFL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleFL;
+				inputSampleL = drySampleL - inputSampleL;
+				//make highpass
+				if (inputSampleL - iirSampleBL > threshold) inputSampleL = iirSampleBL + threshold;
+				if (inputSampleL - iirSampleBL < -threshold) inputSampleL = iirSampleBL - threshold;
+				//slew limit against lowpassed reference point
 
-			iirSampleBR = (iirSampleBR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleBR;
-			iirSampleDR = (iirSampleDR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleDR;
-			iirSampleFR = (iirSampleFR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleFR;
-			inputSampleR = drySampleR - inputSampleR;
-			//make highpass
-			if (inputSampleR - iirSampleBR > threshold) inputSampleR = iirSampleBR + threshold;
-			if (inputSampleR - iirSampleBR < -threshold) inputSampleR = iirSampleBR - threshold;
-			//slew limit against lowpassed reference point
+				iirSampleBR = (iirSampleBR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleBR;
+				iirSampleDR = (iirSampleDR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleDR;
+				iirSampleFR = (iirSampleFR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleFR;
+				inputSampleR = drySampleR - inputSampleR;
+				//make highpass
+				if (inputSampleR - iirSampleBR > threshold) inputSampleR = iirSampleBR + threshold;
+				if (inputSampleR - iirSampleBR < -threshold) inputSampleR = iirSampleBR - threshold;
+				//slew limit against lowpassed reference point
+			}
 		}
-		i_flip = !i_flip;
-		i_lastSampleL = inputSampleL;
-		i_lastSampleR = inputSampleR;
-
-		// Baxandall2
-
-		double trebleSampleL;
-		double bassSampleL;
-		double trebleSampleR;
-		double bassSampleR;
-
-		if (flip)
-		{
-			trebleSampleL = (inputSampleL * trebleAL[2]) + trebleAL[7];
-			trebleAL[7] = (inputSampleL * trebleAL[3]) - (trebleSampleL * trebleAL[5]) + trebleAL[8];
-			trebleAL[8] = (inputSampleL * trebleAL[4]) - (trebleSampleL * trebleAL[6]);
-			trebleSampleL = inputSampleL - trebleSampleL;
-
-			bassSampleL = (inputSampleL * bassAL[2]) + bassAL[7];
-			bassAL[7] = (inputSampleL * bassAL[3]) - (bassSampleL * bassAL[5]) + bassAL[8];
-			bassAL[8] = (inputSampleL * bassAL[4]) - (bassSampleL * bassAL[6]);
-
-			trebleSampleR = (inputSampleR * trebleAR[2]) + trebleAR[7];
-			trebleAR[7] = (inputSampleR * trebleAR[3]) - (trebleSampleR * trebleAR[5]) + trebleAR[8];
-			trebleAR[8] = (inputSampleR * trebleAR[4]) - (trebleSampleR * trebleAR[6]);
-			trebleSampleR = inputSampleR - trebleSampleR;
-
-			bassSampleR = (inputSampleR * bassAR[2]) + bassAR[7];
-			bassAR[7] = (inputSampleR * bassAR[3]) - (bassSampleR * bassAR[5]) + bassAR[8];
-			bassAR[8] = (inputSampleR * bassAR[4]) - (bassSampleR * bassAR[6]);
-		}
-		else
-		{
-			trebleSampleL = (inputSampleL * trebleBL[2]) + trebleBL[7];
-			trebleBL[7] = (inputSampleL * trebleBL[3]) - (trebleSampleL * trebleBL[5]) + trebleBL[8];
-			trebleBL[8] = (inputSampleL * trebleBL[4]) - (trebleSampleL * trebleBL[6]);
-			trebleSampleL = inputSampleL - trebleSampleL;
-
-			bassSampleL = (inputSampleL * bassBL[2]) + bassBL[7];
-			bassBL[7] = (inputSampleL * bassBL[3]) - (bassSampleL * bassBL[5]) + bassBL[8];
-			bassBL[8] = (inputSampleL * bassBL[4]) - (bassSampleL * bassBL[6]);
-
-			trebleSampleR = (inputSampleR * trebleBR[2]) + trebleBR[7];
-			trebleBR[7] = (inputSampleR * trebleBR[3]) - (trebleSampleR * trebleBR[5]) + trebleBR[8];
-			trebleBR[8] = (inputSampleR * trebleBR[4]) - (trebleSampleR * trebleBR[6]);
-			trebleSampleR = inputSampleR - trebleSampleR;
-
-			bassSampleR = (inputSampleR * bassBR[2]) + bassBR[7];
-			bassBR[7] = (inputSampleR * bassBR[3]) - (bassSampleR * bassBR[5]) + bassBR[8];
-			bassBR[8] = (inputSampleR * bassBR[4]) - (bassSampleR * bassBR[6]);
-		}
-
-		trebleSampleL *= trebleGain;
-		bassSampleL *= bassGain;
-		inputSampleL = bassSampleL + trebleSampleL; //interleaved biquad
-		trebleSampleR *= trebleGain;
-		bassSampleR *= bassGain;
-		inputSampleR = bassSampleR + trebleSampleR; //interleaved biquad
-
 
 		// Tape
 
@@ -420,62 +381,189 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
 		inputSampleL += ((iirHeadBumpAL + iirHeadBumpBL) * bumpgain);//and head bump
 		inputSampleR += ((iirHeadBumpAR + iirHeadBumpBR) * bumpgain);//and head bump
 
-		if (lastSampleL >= 0.333333333333333333)
-		{
-			if (inputSampleL < 0.333333333333333333) lastSampleL = ((0.333333333333333333*softness) + (inputSampleL * (1.0-softness)));
-			else lastSampleL = 0.333333333333333333;
+		// BitshiftGain
+
+		inputSampleL *= gain;
+		inputSampleR *= gain;
+
+		// uLawEncode
+
+		if(enableuLaw) {
+			static int noisesourceL = 0;
+			static int noisesourceR = 850010;
+			int residue;
+			double applyresidue;
+		
+			noisesourceL = noisesourceL % 1700021; noisesourceL++;
+			residue = noisesourceL * noisesourceL;
+			residue = residue % 170003; residue *= residue;
+			residue = residue % 17011; residue *= residue;
+			residue = residue % 1709; residue *= residue;
+			residue = residue % 173; residue *= residue;
+			residue = residue % 17;
+			applyresidue = residue;
+			applyresidue *= 0.00000001;
+			applyresidue *= 0.00000001;
+			inputSampleL += applyresidue;
+			if (inputSampleL<1.2e-38 && -inputSampleL<1.2e-38) {
+				inputSampleL -= applyresidue;
+			}
+		
+			noisesourceR = noisesourceR % 1700021; noisesourceR++;
+			residue = noisesourceR * noisesourceR;
+			residue = residue % 170003; residue *= residue;
+			residue = residue % 17011; residue *= residue;
+			residue = residue % 1709; residue *= residue;
+			residue = residue % 173; residue *= residue;
+			residue = residue % 17;
+			applyresidue = residue;
+			applyresidue *= 0.00000001;
+			applyresidue *= 0.00000001;
+			inputSampleR += applyresidue;
+			if (inputSampleR<1.2e-38 && -inputSampleR<1.2e-38) {
+				inputSampleR -= applyresidue;
+			}
+			//for live air, we always apply the dither noise. Then, if our result is 
+			//effectively digital black, we'll subtract it auLawEncode. We want a 'air' hiss
+
+			if (inputSampleL > 1.0) inputSampleL = 1.0;
+			if (inputSampleL < -1.0) inputSampleL = -1.0;
+		
+			if (inputSampleR > 1.0) inputSampleR = 1.0;
+			if (inputSampleR < -1.0) inputSampleR = -1.0;
+		
+			if (inputSampleL > 0) inputSampleL = log(1.0+(255*fabs(inputSampleL))) / log(256);
+			if (inputSampleL < 0) inputSampleL = -log(1.0+(255*fabs(inputSampleL))) / log(256);
+		
+			if (inputSampleR > 0) inputSampleR = log(1.0+(255*fabs(inputSampleR))) / log(256);
+			if (inputSampleR < 0) inputSampleR = -log(1.0+(255*fabs(inputSampleR))) / log(256);
+		}
+	
+		// Creature
+
+		if(wet != 0) {
+			double cr_drySampleL = inputSampleL;
+			double cr_drySampleR = inputSampleR;
+		
+			for (int x = 0; x < stages; x++) {
+				inputSampleL = (slewL[x]+(sin(slewL[x]-inputSampleL)*0.5))*source;
+				slewL[x] = inputSampleL*0.5;
+				inputSampleR = (slewR[x]+(sin(slewR[x]-inputSampleR)*0.5))*source;
+				slewR[x] = inputSampleR*0.5;
+			}
+			if (stages % 2 > 0) {
+				inputSampleL = -inputSampleL;
+				inputSampleR = -inputSampleR;
+			}
+		
+			inputSampleL *= wet;
+			inputSampleR *= wet;
+			cr_drySampleL *= dry;
+			cr_drySampleR *= dry;
+			inputSampleL += cr_drySampleL;
+			inputSampleR += cr_drySampleR;
 		}
 
-		if (lastSampleL <= -0.333333333333333333)
-		{
-			if (inputSampleL > -0.333333333333333333) lastSampleL = ((-0.333333333333333333*softness) + (inputSampleL * (1.0-softness)));
-			else lastSampleL = -0.333333333333333333;
+		// uLawDecode
+
+		if(enableuLaw) {
+			if (inputSampleL > 1.0) inputSampleL = 1.0;
+			if (inputSampleL < -1.0) inputSampleL = -1.0;
+		
+			if (inputSampleR > 1.0) inputSampleR = 1.0;
+			if (inputSampleR < -1.0) inputSampleR = -1.0;
+		
+			if (inputSampleL > 0) inputSampleL = (pow(256,fabs(inputSampleL))-1.0) / 255;
+			if (inputSampleL < 0) inputSampleL = -(pow(256,fabs(inputSampleL))-1.0) / 255;
+		
+			if (inputSampleR > 0) inputSampleR = (pow(256,fabs(inputSampleR))-1.0) / 255;
+			if (inputSampleR < 0) inputSampleR = -(pow(256,fabs(inputSampleR))-1.0) / 255;
 		}
 
-		if (inputSampleL > 0.333333333333333333)
+		// ToneSlant
+		
+		for (int count = ts_overallscale; count >= 0; count--) {
+			ts_bL[count+1] = ts_bL[count];
+			ts_bR[count+1] = ts_bR[count];
+		}
+		
+		ts_bL[0] = ts_accumulatorSampleL = ts_drySampleL = inputSampleL;
+		ts_bR[0] = ts_accumulatorSampleR = ts_drySampleR = inputSampleR;
+		
+		ts_accumulatorSampleL *= ts_f[0];
+		ts_accumulatorSampleR *= ts_f[0];
+
+		for (int count = 1; count < ts_overallscale; count++) {
+			ts_accumulatorSampleL += (ts_bL[count] * ts_f[count]);
+			ts_accumulatorSampleR += (ts_bR[count] * ts_f[count]);
+		}
+		
+		ts_correctionSampleL = inputSampleL - (ts_accumulatorSampleL*2.0);
+		ts_correctionSampleR = inputSampleR - (ts_accumulatorSampleR*2.0);
+		//we're gonna apply the total effect of all these calculations as a single subtract
+		
+		inputSampleL += (ts_correctionSampleL * ts_applySlant);
+		inputSampleR += (ts_correctionSampleR * ts_applySlant);
+		//our one math operation on the input data coming in
+
+		// ADClip
+		
+		if (lastSampleL >= 0.5)
 		{
-			if (lastSampleL < 0.333333333333333333) inputSampleL = ((0.333333333333333333*softness) + (lastSampleL * (1.0-softness)));
-			else inputSampleL = 0.333333333333333333;
+			if (inputSampleL < 0.5) lastSampleL = ((0.5*softness) + (inputSampleL * (1.0-softness)));
+			else lastSampleL = 0.5;
 		}
 
-		if (inputSampleL < -0.333333333333333333)
+		if (lastSampleL <= -0.5)
 		{
-			if (lastSampleL > -0.333333333333333333) inputSampleL = ((-0.333333333333333333*softness) + (lastSampleL * (1.0-softness)));
-			else inputSampleL = -0.333333333333333333;
+			if (inputSampleL > -0.5) lastSampleL = ((-0.5*softness) + (inputSampleL * (1.0-softness)));
+			else lastSampleL = -0.5;
+		}
+
+		if (inputSampleL > 0.5)
+		{
+			if (lastSampleL < 0.5) inputSampleL = ((0.5*softness) + (lastSampleL * (1.0-softness)));
+			else inputSampleL = 0.5;
+		}
+
+		if (inputSampleL < -0.5)
+		{
+			if (lastSampleL > -0.5) inputSampleL = ((-0.5*softness) + (lastSampleL * (1.0-softness)));
+			else inputSampleL = -0.5;
 		}
 		lastSampleL = inputSampleL; //end ADClip L
 
 
-		if (lastSampleR >= 0.333333333333333333)
+		if (lastSampleR >= 0.5)
 		{
-			if (inputSampleR < 0.333333333333333333) lastSampleR = ((0.333333333333333333*softness) + (inputSampleR * (1.0-softness)));
-			else lastSampleR = 0.333333333333333333;
+			if (inputSampleR < 0.5) lastSampleR = ((0.5*softness) + (inputSampleR * (1.0-softness)));
+			else lastSampleR = 0.5;
 		}
 
-		if (lastSampleR <= -0.333333333333333333)
+		if (lastSampleR <= -0.5)
 		{
-			if (inputSampleR > -0.333333333333333333) lastSampleR = ((-0.333333333333333333*softness) + (inputSampleR * (1.0-softness)));
-			else lastSampleR = -0.333333333333333333;
+			if (inputSampleR > -0.5) lastSampleR = ((-0.5*softness) + (inputSampleR * (1.0-softness)));
+			else lastSampleR = -0.5;
 		}
 
-		if (inputSampleR > 0.333333333333333333)
+		if (inputSampleR > 0.5)
 		{
-			if (lastSampleR < 0.333333333333333333) inputSampleR = ((0.333333333333333333*softness) + (lastSampleR * (1.0-softness)));
-			else inputSampleR = 0.333333333333333333;
+			if (lastSampleR < 0.5) inputSampleR = ((0.5*softness) + (lastSampleR * (1.0-softness)));
+			else inputSampleR = 0.5;
 		}
 
-		if (inputSampleR < -0.333333333333333333)
+		if (inputSampleR < -0.5)
 		{
-			if (lastSampleR > -0.333333333333333333) inputSampleR = ((-0.333333333333333333*softness) + (lastSampleR * (1.0-softness)));
-			else inputSampleR = -0.333333333333333333;
+			if (lastSampleR > -0.5) inputSampleR = ((-0.5*softness) + (lastSampleR * (1.0-softness)));
+			else inputSampleR = -0.5;
 		}
 		lastSampleR = inputSampleR; //end ADClip R
 
-		if (inputSampleL > 0.333333333333333333) inputSampleL = 0.333333333333333333;
-		if (inputSampleL < -0.333333333333333333) inputSampleL = -0.333333333333333333;
+		if (inputSampleL > 0.5) inputSampleL = 0.5;
+		if (inputSampleL < -0.5) inputSampleL = -0.5;
 		//final iron bar
-		if (inputSampleR > 0.333333333333333333) inputSampleR = 0.333333333333333333;
-		if (inputSampleR < -0.333333333333333333) inputSampleR = -0.333333333333333333;
+		if (inputSampleR > 0.5) inputSampleR = 0.5;
+		if (inputSampleR < -0.5) inputSampleR = -0.5;
 		//final iron bar
 
 		//begin 32 bit stereo floating point dither
@@ -499,10 +587,17 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
 
 void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs, VstInt32 sampleFrames)
 {
-    double* in1  =  inputs[0];
-    double* in2  =  inputs[1];
-    double* out1 = outputs[0];
-    double* out2 = outputs[1];
+  double* in1  =  inputs[0];
+  double* in2  =  inputs[1];
+  double* out1 = outputs[0];
+  double* out2 = outputs[1];
+
+	bool enableUltrasonic = I > 0.0;
+	bool enableInterstage = J > 0.0;
+	bool enableuLaw = K > 0.0;
+
+	double drySampleL;
+	double drySampleR;
 
 	double overallscale = 1.0;
 	overallscale /= 44100.0;
@@ -552,53 +647,28 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 
 	// UltrasonicLite
 
-	biquadA[0] = 24000.0 / getSampleRate();
-	if (getSampleRate() < 88000.0) biquadA[0] = 21000.0 / getSampleRate();
-    biquadA[1] = 0.70710678;
+	double KK;
+	double u_norm;
 
-	double KK = tan(M_PI * biquadA[0]); //lowpass
-	double u_norm = 1.0 / (1.0 + KK / biquadA[1] + KK * KK);
-	biquadA[2] = KK * KK * u_norm;
-	biquadA[3] = 2.0 * biquadA[2];
-	biquadA[4] = biquadA[2];
-	biquadA[5] = 2.0 * (KK * KK - 1.0) * u_norm;
-	biquadA[6] = (1.0 - KK / biquadA[1] + KK * KK) * u_norm;
+	if(enableUltrasonic) {
+		biquadA[0] = 24000.0 / getSampleRate();
+		if (getSampleRate() < 88000.0) biquadA[0] = 21000.0 / getSampleRate();
+	    biquadA[1] = 0.70710678;
+
+		KK = tan(M_PI * biquadA[0]); //lowpass
+		u_norm = 1.0 / (1.0 + KK / biquadA[1] + KK * KK);
+		biquadA[2] = KK * KK * u_norm;
+		biquadA[3] = 2.0 * biquadA[2];
+		biquadA[4] = biquadA[2];
+		biquadA[5] = 2.0 * (KK * KK - 1.0) * u_norm;
+		biquadA[6] = (1.0 - KK / biquadA[1] + KK * KK) * u_norm;
+	}
 
 	// Interstage
 
 	double firstStage = 0.381966011250105 / overallscale;
 	double iirAmount = 0.00295 / overallscale;
 	double threshold = 0.381966011250105;
-
-	// Baxandall2
-
-	double trebleGain = pow(10.0,((B*48.0)-24.0)/20.0);
-	double trebleFreq = (4410.0*trebleGain)/getSampleRate();
-	if (trebleFreq > 0.45) trebleFreq = 0.45;
-	trebleAL[0] = trebleBL[0] = trebleAR[0] = trebleBR[0] = trebleFreq;
-	double bassGain = pow(10.0,((C*48.0)-24.0)/20.0);
-	double bassFreq = pow(10.0,-((C*48.0)-24.0)/20.0);
-	bassFreq = (8820.0*bassFreq)/getSampleRate();
-	if (bassFreq > 0.45) bassFreq = 0.45;
-	bassAL[0] = bassBL[0] = bassAR[0] = bassBR[0] = bassFreq;
-    trebleAL[1] = trebleBL[1] = trebleAR[1] = trebleBR[1] = 0.4;
-    bassAL[1] = bassBL[1] = bassAR[1] = bassBR[1] = 0.2;
-
-	double b_K = tan(M_PI * trebleAL[0]);
-	double b_norm = 1.0 / (1.0 + b_K / trebleAL[1] + b_K * b_K);
-	trebleBL[2] = trebleAL[2] = trebleBR[2] = trebleAR[2] = b_K * b_K * b_norm;
-	trebleBL[3] = trebleAL[3] = trebleBR[3] = trebleAR[3] = 2.0 * trebleAL[2];
-	trebleBL[4] = trebleAL[4] = trebleBR[4] = trebleAR[4] = trebleAL[2];
-	trebleBL[5] = trebleAL[5] = trebleBR[5] = trebleAR[5] = 2.0 * (b_K * b_K - 1.0) * b_norm;
-	trebleBL[6] = trebleAL[6] = trebleBR[6] = trebleAR[6] = (1.0 - b_K / trebleAL[1] + b_K * b_K) * b_norm;
-
-	b_K = tan(M_PI * bassAL[0]);
-	b_norm = 1.0 / (1.0 + b_K / bassAL[1] + b_K * b_K);
-	bassBL[2] = bassAL[2] = bassBR[2] = bassAR[2] = b_K * b_K * b_norm;
-	bassBL[3] = bassAL[3] = bassBR[3] = bassAR[3] = 2.0 * bassAL[2];
-	bassBL[4] = bassAL[4] = bassBR[4] = bassAR[4] = bassAL[2];
-	bassBL[5] = bassAL[5] = bassBR[5] = bassAR[5] = 2.0 * (b_K * b_K - 1.0) * b_norm;
-	bassBL[6] = bassAL[6] = bassBR[6] = bassAR[6] = (1.0 - b_K / bassAL[1] + b_K * b_K) * b_norm;
 
 	// Tape
 
@@ -627,126 +697,105 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 	biquadCL[5] = biquadDL[5] = biquadCR[5] = biquadDR[5] = 2.0 * (K * K - 1.0) * norm;
 	biquadCL[6] = biquadDL[6] = biquadCR[6] = biquadDR[6] = (1.0 - K / biquadDR[1] + K * K) * norm;
 
-    while (--sampleFrames >= 0)
-    {
+	// Creature
 
-		// BitshiftGain
+	double source = 1.0-pow(1.0-D,5);
+	int stages = (pow(E,2)*32.0*sqrt(overallscale))+1;
+	double wet = (F*2.0)-1.0; //inv-dry-wet for highpass
+	double dry = 2.0-(F*2.0);
+	if (dry > 1.0) dry = 1.0; //full dry for use with inv, to 0.0 at full wet
 
-		double inputSampleL = *in1 * gain;
-		double inputSampleR = *in2 * gain;
+
+	// ToneSlant
+
+
+	double ts_inputSampleL;
+	double ts_inputSampleR;
+	double ts_correctionSampleL;
+	double ts_correctionSampleR;
+	double ts_accumulatorSampleL;
+	double ts_accumulatorSampleR;
+	double ts_drySampleL;
+	double ts_drySampleR;
+	double ts_overallscale = (G*99.0)+1.0;
+	double ts_applySlant = (H*2.0)-1.0;
+	
+	
+	ts_f[0] = 1.0 / ts_overallscale;
+	//count to f(gain) which will be 0. f(0) is x1
+	for (int count = 1; count < 102; count++) {
+		if (count <= ts_overallscale) {
+			ts_f[count] = (1.0 - (count / ts_overallscale)) / ts_overallscale;
+			//recalc the filter and don't change the buffer it'll apply to
+		} else {
+			ts_bL[count] = 0.0; //blank the unused buffer so when we return to it, no pops
+			ts_bR[count] = 0.0; //blank the unused buffer so when we return to it, no pops
+		}
+	}
+
+  while (--sampleFrames >= 0)
+  {
+
+		double inputSampleL = *in1;
+		double inputSampleR = *in2;
 
 		if (fabs(inputSampleL)<1.18e-23) inputSampleL = fpdL * 1.18e-17;
 		if (fabs(inputSampleR)<1.18e-23) inputSampleR = fpdR * 1.18e-17;
 
 		// UltrasonicLite
 
-		double outSampleL = biquadA[2]*inputSampleL+biquadA[3]*biquadA[7]+biquadA[4]*biquadA[8]-biquadA[5]*biquadA[9]-biquadA[6]*biquadA[10];
-		biquadA[8] = biquadA[7]; biquadA[7] = inputSampleL; inputSampleL = outSampleL; biquadA[10] = biquadA[9]; biquadA[9] = inputSampleL; //DF1 left
+		if(enableUltrasonic) {
+			double outSampleL = biquadA[2]*inputSampleL+biquadA[3]*biquadA[7]+biquadA[4]*biquadA[8]-biquadA[5]*biquadA[9]-biquadA[6]*biquadA[10];
+			biquadA[8] = biquadA[7]; biquadA[7] = inputSampleL; inputSampleL = outSampleL; biquadA[10] = biquadA[9]; biquadA[9] = inputSampleL; //DF1 left
 
-		double outSampleR = biquadA[2]*inputSampleR+biquadA[3]*biquadA[11]+biquadA[4]*biquadA[12]-biquadA[5]*biquadA[13]-biquadA[6]*biquadA[14];
-		biquadA[12] = biquadA[11]; biquadA[11] = inputSampleR; inputSampleR = outSampleR; biquadA[14] = biquadA[13]; biquadA[13] = inputSampleR; //DF1 right
+			double outSampleR = biquadA[2]*inputSampleR+biquadA[3]*biquadA[11]+biquadA[4]*biquadA[12]-biquadA[5]*biquadA[13]-biquadA[6]*biquadA[14];
+			biquadA[12] = biquadA[11]; biquadA[11] = inputSampleR; inputSampleR = outSampleR; biquadA[14] = biquadA[13]; biquadA[13] = inputSampleR; //DF1 right
+		}
 
 		// Interstage
 
-		double drySampleL = inputSampleL;
-		double drySampleR = inputSampleR;
+		if(enableInterstage) {
+			drySampleL = inputSampleL;
+			drySampleR = inputSampleR;
 
-		if (i_flip) {
-			iirSampleAL = (iirSampleAL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleAL;
-			iirSampleCL = (iirSampleCL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleCL;
-			iirSampleEL = (iirSampleEL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleEL;
-			inputSampleL = drySampleL - inputSampleL;
-			//make highpass
-			if (inputSampleL - iirSampleAL > threshold) inputSampleL = iirSampleAL + threshold;
-			if (inputSampleL - iirSampleAL < -threshold) inputSampleL = iirSampleAL - threshold;
-			//slew limit against lowpassed reference point
+			if (flip) {
+				iirSampleAL = (iirSampleAL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleAL;
+				iirSampleCL = (iirSampleCL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleCL;
+				iirSampleEL = (iirSampleEL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleEL;
+				inputSampleL = drySampleL - inputSampleL;
+				//make highpass
+				if (inputSampleL - iirSampleAL > threshold) inputSampleL = iirSampleAL + threshold;
+				if (inputSampleL - iirSampleAL < -threshold) inputSampleL = iirSampleAL - threshold;
+				//slew limit against lowpassed reference point
 
-			iirSampleAR = (iirSampleAR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleAR;
-			iirSampleCR = (iirSampleCR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleCR;
-			iirSampleER = (iirSampleER * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleER;
-			inputSampleR = drySampleR - inputSampleR;
-			//make highpass
-			if (inputSampleR - iirSampleAR > threshold) inputSampleR = iirSampleAR + threshold;
-			if (inputSampleR - iirSampleAR < -threshold) inputSampleR = iirSampleAR - threshold;
-			//slew limit against lowpassed reference point
-		} else {
-			iirSampleBL = (iirSampleBL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleBL;
-			iirSampleDL = (iirSampleDL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleDL;
-			iirSampleFL = (iirSampleFL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleFL;
-			inputSampleL = drySampleL - inputSampleL;
-			//make highpass
-			if (inputSampleL - iirSampleBL > threshold) inputSampleL = iirSampleBL + threshold;
-			if (inputSampleL - iirSampleBL < -threshold) inputSampleL = iirSampleBL - threshold;
-			//slew limit against lowpassed reference point
+				iirSampleAR = (iirSampleAR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleAR;
+				iirSampleCR = (iirSampleCR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleCR;
+				iirSampleER = (iirSampleER * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleER;
+				inputSampleR = drySampleR - inputSampleR;
+				//make highpass
+				if (inputSampleR - iirSampleAR > threshold) inputSampleR = iirSampleAR + threshold;
+				if (inputSampleR - iirSampleAR < -threshold) inputSampleR = iirSampleAR - threshold;
+				//slew limit against lowpassed reference point
+			} else {
+				iirSampleBL = (iirSampleBL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleBL;
+				iirSampleDL = (iirSampleDL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleDL;
+				iirSampleFL = (iirSampleFL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleFL;
+				inputSampleL = drySampleL - inputSampleL;
+				//make highpass
+				if (inputSampleL - iirSampleBL > threshold) inputSampleL = iirSampleBL + threshold;
+				if (inputSampleL - iirSampleBL < -threshold) inputSampleL = iirSampleBL - threshold;
+				//slew limit against lowpassed reference point
 
-			iirSampleBR = (iirSampleBR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleBR;
-			iirSampleDR = (iirSampleDR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleDR;
-			iirSampleFR = (iirSampleFR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleFR;
-			inputSampleR = drySampleR - inputSampleR;
-			//make highpass
-			if (inputSampleR - iirSampleBR > threshold) inputSampleR = iirSampleBR + threshold;
-			if (inputSampleR - iirSampleBR < -threshold) inputSampleR = iirSampleBR - threshold;
-			//slew limit against lowpassed reference point
+				iirSampleBR = (iirSampleBR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleBR;
+				iirSampleDR = (iirSampleDR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleDR;
+				iirSampleFR = (iirSampleFR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleFR;
+				inputSampleR = drySampleR - inputSampleR;
+				//make highpass
+				if (inputSampleR - iirSampleBR > threshold) inputSampleR = iirSampleBR + threshold;
+				if (inputSampleR - iirSampleBR < -threshold) inputSampleR = iirSampleBR - threshold;
+				//slew limit against lowpassed reference point
+			}
 		}
-		i_flip = !i_flip;
-		i_lastSampleL = inputSampleL;
-		i_lastSampleR = inputSampleR;
-
-		// Baxandall2
-
-		double trebleSampleL;
-		double bassSampleL;
-		double trebleSampleR;
-		double bassSampleR;
-
-		if (flip)
-		{
-			trebleSampleL = (inputSampleL * trebleAL[2]) + trebleAL[7];
-			trebleAL[7] = (inputSampleL * trebleAL[3]) - (trebleSampleL * trebleAL[5]) + trebleAL[8];
-			trebleAL[8] = (inputSampleL * trebleAL[4]) - (trebleSampleL * trebleAL[6]);
-			trebleSampleL = inputSampleL - trebleSampleL;
-
-			bassSampleL = (inputSampleL * bassAL[2]) + bassAL[7];
-			bassAL[7] = (inputSampleL * bassAL[3]) - (bassSampleL * bassAL[5]) + bassAL[8];
-			bassAL[8] = (inputSampleL * bassAL[4]) - (bassSampleL * bassAL[6]);
-
-			trebleSampleR = (inputSampleR * trebleAR[2]) + trebleAR[7];
-			trebleAR[7] = (inputSampleR * trebleAR[3]) - (trebleSampleR * trebleAR[5]) + trebleAR[8];
-			trebleAR[8] = (inputSampleR * trebleAR[4]) - (trebleSampleR * trebleAR[6]);
-			trebleSampleR = inputSampleR - trebleSampleR;
-
-			bassSampleR = (inputSampleR * bassAR[2]) + bassAR[7];
-			bassAR[7] = (inputSampleR * bassAR[3]) - (bassSampleR * bassAR[5]) + bassAR[8];
-			bassAR[8] = (inputSampleR * bassAR[4]) - (bassSampleR * bassAR[6]);
-		}
-		else
-		{
-			trebleSampleL = (inputSampleL * trebleBL[2]) + trebleBL[7];
-			trebleBL[7] = (inputSampleL * trebleBL[3]) - (trebleSampleL * trebleBL[5]) + trebleBL[8];
-			trebleBL[8] = (inputSampleL * trebleBL[4]) - (trebleSampleL * trebleBL[6]);
-			trebleSampleL = inputSampleL - trebleSampleL;
-
-			bassSampleL = (inputSampleL * bassBL[2]) + bassBL[7];
-			bassBL[7] = (inputSampleL * bassBL[3]) - (bassSampleL * bassBL[5]) + bassBL[8];
-			bassBL[8] = (inputSampleL * bassBL[4]) - (bassSampleL * bassBL[6]);
-
-			trebleSampleR = (inputSampleR * trebleBR[2]) + trebleBR[7];
-			trebleBR[7] = (inputSampleR * trebleBR[3]) - (trebleSampleR * trebleBR[5]) + trebleBR[8];
-			trebleBR[8] = (inputSampleR * trebleBR[4]) - (trebleSampleR * trebleBR[6]);
-			trebleSampleR = inputSampleR - trebleSampleR;
-
-			bassSampleR = (inputSampleR * bassBR[2]) + bassBR[7];
-			bassBR[7] = (inputSampleR * bassBR[3]) - (bassSampleR * bassBR[5]) + bassBR[8];
-			bassBR[8] = (inputSampleR * bassBR[4]) - (bassSampleR * bassBR[6]);
-		}
-
-		trebleSampleL *= trebleGain;
-		bassSampleL *= bassGain;
-		inputSampleL = bassSampleL + trebleSampleL; //interleaved biquad
-		trebleSampleR *= trebleGain;
-		bassSampleR *= bassGain;
-		inputSampleR = bassSampleR + trebleSampleR; //interleaved biquad
-
 
 		// Tape
 
@@ -910,62 +959,189 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 		inputSampleL += ((iirHeadBumpAL + iirHeadBumpBL) * bumpgain);//and head bump
 		inputSampleR += ((iirHeadBumpAR + iirHeadBumpBR) * bumpgain);//and head bump
 
-		if (lastSampleL >= 0.333333333333333333)
-		{
-			if (inputSampleL < 0.333333333333333333) lastSampleL = ((0.333333333333333333*softness) + (inputSampleL * (1.0-softness)));
-			else lastSampleL = 0.333333333333333333;
+		// BitshiftGain
+
+		inputSampleL *= gain;
+		inputSampleR *= gain;
+
+		// uLawEncode
+
+		if(enableuLaw) {
+			static int noisesourceL = 0;
+			static int noisesourceR = 850010;
+			int residue;
+			double applyresidue;
+		
+			noisesourceL = noisesourceL % 1700021; noisesourceL++;
+			residue = noisesourceL * noisesourceL;
+			residue = residue % 170003; residue *= residue;
+			residue = residue % 17011; residue *= residue;
+			residue = residue % 1709; residue *= residue;
+			residue = residue % 173; residue *= residue;
+			residue = residue % 17;
+			applyresidue = residue;
+			applyresidue *= 0.00000001;
+			applyresidue *= 0.00000001;
+			inputSampleL += applyresidue;
+			if (inputSampleL<1.2e-38 && -inputSampleL<1.2e-38) {
+				inputSampleL -= applyresidue;
+			}
+		
+			noisesourceR = noisesourceR % 1700021; noisesourceR++;
+			residue = noisesourceR * noisesourceR;
+			residue = residue % 170003; residue *= residue;
+			residue = residue % 17011; residue *= residue;
+			residue = residue % 1709; residue *= residue;
+			residue = residue % 173; residue *= residue;
+			residue = residue % 17;
+			applyresidue = residue;
+			applyresidue *= 0.00000001;
+			applyresidue *= 0.00000001;
+			inputSampleR += applyresidue;
+			if (inputSampleR<1.2e-38 && -inputSampleR<1.2e-38) {
+				inputSampleR -= applyresidue;
+			}
+			//for live air, we always apply the dither noise. Then, if our result is 
+			//effectively digital black, we'll subtract it auLawEncode. We want a 'air' hiss
+
+			if (inputSampleL > 1.0) inputSampleL = 1.0;
+			if (inputSampleL < -1.0) inputSampleL = -1.0;
+		
+			if (inputSampleR > 1.0) inputSampleR = 1.0;
+			if (inputSampleR < -1.0) inputSampleR = -1.0;
+		
+			if (inputSampleL > 0) inputSampleL = log(1.0+(255*fabs(inputSampleL))) / log(256);
+			if (inputSampleL < 0) inputSampleL = -log(1.0+(255*fabs(inputSampleL))) / log(256);
+		
+			if (inputSampleR > 0) inputSampleR = log(1.0+(255*fabs(inputSampleR))) / log(256);
+			if (inputSampleR < 0) inputSampleR = -log(1.0+(255*fabs(inputSampleR))) / log(256);
+		}
+	
+		// Creature
+
+		if(wet != 0) {
+			double cr_drySampleL = inputSampleL;
+			double cr_drySampleR = inputSampleR;
+		
+			for (int x = 0; x < stages; x++) {
+				inputSampleL = (slewL[x]+(sin(slewL[x]-inputSampleL)*0.5))*source;
+				slewL[x] = inputSampleL*0.5;
+				inputSampleR = (slewR[x]+(sin(slewR[x]-inputSampleR)*0.5))*source;
+				slewR[x] = inputSampleR*0.5;
+			}
+			if (stages % 2 > 0) {
+				inputSampleL = -inputSampleL;
+				inputSampleR = -inputSampleR;
+			}
+		
+			inputSampleL *= wet;
+			inputSampleR *= wet;
+			cr_drySampleL *= dry;
+			cr_drySampleR *= dry;
+			inputSampleL += cr_drySampleL;
+			inputSampleR += cr_drySampleR;
 		}
 
-		if (lastSampleL <= -0.333333333333333333)
-		{
-			if (inputSampleL > -0.333333333333333333) lastSampleL = ((-0.333333333333333333*softness) + (inputSampleL * (1.0-softness)));
-			else lastSampleL = -0.333333333333333333;
+		// uLawDecode
+
+		if(enableuLaw) {
+			if (inputSampleL > 1.0) inputSampleL = 1.0;
+			if (inputSampleL < -1.0) inputSampleL = -1.0;
+		
+			if (inputSampleR > 1.0) inputSampleR = 1.0;
+			if (inputSampleR < -1.0) inputSampleR = -1.0;
+		
+			if (inputSampleL > 0) inputSampleL = (pow(256,fabs(inputSampleL))-1.0) / 255;
+			if (inputSampleL < 0) inputSampleL = -(pow(256,fabs(inputSampleL))-1.0) / 255;
+		
+			if (inputSampleR > 0) inputSampleR = (pow(256,fabs(inputSampleR))-1.0) / 255;
+			if (inputSampleR < 0) inputSampleR = -(pow(256,fabs(inputSampleR))-1.0) / 255;
 		}
 
-		if (inputSampleL > 0.333333333333333333)
+		// ToneSlant
+		
+		for (int count = ts_overallscale; count >= 0; count--) {
+			ts_bL[count+1] = ts_bL[count];
+			ts_bR[count+1] = ts_bR[count];
+		}
+		
+		ts_bL[0] = ts_accumulatorSampleL = ts_drySampleL = inputSampleL;
+		ts_bR[0] = ts_accumulatorSampleR = ts_drySampleR = inputSampleR;
+		
+		ts_accumulatorSampleL *= ts_f[0];
+		ts_accumulatorSampleR *= ts_f[0];
+
+		for (int count = 1; count < ts_overallscale; count++) {
+			ts_accumulatorSampleL += (ts_bL[count] * ts_f[count]);
+			ts_accumulatorSampleR += (ts_bR[count] * ts_f[count]);
+		}
+		
+		ts_correctionSampleL = inputSampleL - (ts_accumulatorSampleL*2.0);
+		ts_correctionSampleR = inputSampleR - (ts_accumulatorSampleR*2.0);
+		//we're gonna apply the total effect of all these calculations as a single subtract
+		
+		inputSampleL += (ts_correctionSampleL * ts_applySlant);
+		inputSampleR += (ts_correctionSampleR * ts_applySlant);
+		//our one math operation on the input data coming in
+
+		// ADClip
+		
+		if (lastSampleL >= 0.5)
 		{
-			if (lastSampleL < 0.333333333333333333) inputSampleL = ((0.333333333333333333*softness) + (lastSampleL * (1.0-softness)));
-			else inputSampleL = 0.333333333333333333;
+			if (inputSampleL < 0.5) lastSampleL = ((0.5*softness) + (inputSampleL * (1.0-softness)));
+			else lastSampleL = 0.5;
 		}
 
-		if (inputSampleL < -0.333333333333333333)
+		if (lastSampleL <= -0.5)
 		{
-			if (lastSampleL > -0.333333333333333333) inputSampleL = ((-0.333333333333333333*softness) + (lastSampleL * (1.0-softness)));
-			else inputSampleL = -0.333333333333333333;
+			if (inputSampleL > -0.5) lastSampleL = ((-0.5*softness) + (inputSampleL * (1.0-softness)));
+			else lastSampleL = -0.5;
+		}
+
+		if (inputSampleL > 0.5)
+		{
+			if (lastSampleL < 0.5) inputSampleL = ((0.5*softness) + (lastSampleL * (1.0-softness)));
+			else inputSampleL = 0.5;
+		}
+
+		if (inputSampleL < -0.5)
+		{
+			if (lastSampleL > -0.5) inputSampleL = ((-0.5*softness) + (lastSampleL * (1.0-softness)));
+			else inputSampleL = -0.5;
 		}
 		lastSampleL = inputSampleL; //end ADClip L
 
 
-		if (lastSampleR >= 0.333333333333333333)
+		if (lastSampleR >= 0.5)
 		{
-			if (inputSampleR < 0.333333333333333333) lastSampleR = ((0.333333333333333333*softness) + (inputSampleR * (1.0-softness)));
-			else lastSampleR = 0.333333333333333333;
+			if (inputSampleR < 0.5) lastSampleR = ((0.5*softness) + (inputSampleR * (1.0-softness)));
+			else lastSampleR = 0.5;
 		}
 
-		if (lastSampleR <= -0.333333333333333333)
+		if (lastSampleR <= -0.5)
 		{
-			if (inputSampleR > -0.333333333333333333) lastSampleR = ((-0.333333333333333333*softness) + (inputSampleR * (1.0-softness)));
-			else lastSampleR = -0.333333333333333333;
+			if (inputSampleR > -0.5) lastSampleR = ((-0.5*softness) + (inputSampleR * (1.0-softness)));
+			else lastSampleR = -0.5;
 		}
 
-		if (inputSampleR > 0.333333333333333333)
+		if (inputSampleR > 0.5)
 		{
-			if (lastSampleR < 0.333333333333333333) inputSampleR = ((0.333333333333333333*softness) + (lastSampleR * (1.0-softness)));
-			else inputSampleR = 0.333333333333333333;
+			if (lastSampleR < 0.5) inputSampleR = ((0.5*softness) + (lastSampleR * (1.0-softness)));
+			else inputSampleR = 0.5;
 		}
 
-		if (inputSampleR < -0.333333333333333333)
+		if (inputSampleR < -0.5)
 		{
-			if (lastSampleR > -0.333333333333333333) inputSampleR = ((-0.333333333333333333*softness) + (lastSampleR * (1.0-softness)));
-			else inputSampleR = -0.333333333333333333;
+			if (lastSampleR > -0.5) inputSampleR = ((-0.5*softness) + (lastSampleR * (1.0-softness)));
+			else inputSampleR = -0.5;
 		}
 		lastSampleR = inputSampleR; //end ADClip R
 
-		if (inputSampleL > 0.333333333333333333) inputSampleL = 0.333333333333333333;
-		if (inputSampleL < -0.333333333333333333) inputSampleL = -0.333333333333333333;
+		if (inputSampleL > 0.5) inputSampleL = 0.5;
+		if (inputSampleL < -0.5) inputSampleL = -0.5;
 		//final iron bar
-		if (inputSampleR > 0.333333333333333333) inputSampleR = 0.333333333333333333;
-		if (inputSampleR < -0.333333333333333333) inputSampleR = -0.333333333333333333;
+		if (inputSampleR > 0.5) inputSampleR = 0.5;
+		if (inputSampleR < -0.5) inputSampleR = -0.5;
 		//final iron bar
 
 		//begin 64 bit stereo floating point dither
