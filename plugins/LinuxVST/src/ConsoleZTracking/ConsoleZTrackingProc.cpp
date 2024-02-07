@@ -1533,7 +1533,7 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 	
 		// Creature
 
-		if(wet != 0) {
+		if(wet != 0.0) {
 			double cr_drySampleL = inputSampleL;
 			double cr_drySampleR = inputSampleR;
 		
