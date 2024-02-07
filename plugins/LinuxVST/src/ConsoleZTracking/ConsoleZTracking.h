@@ -27,7 +27,12 @@ enum {
 	kParamI = 8,
 	kParamJ = 9,
 	kParamK = 10,
-  kNumParameters = 11
+	kParamL = 11,
+	kParamM = 12,
+	kParamN = 13,
+	kParamO = 14,
+	kParamP = 15,
+  kNumParameters = 16
 }; //
 
 const int kNumPrograms = 0;
@@ -62,9 +67,28 @@ private:
     char _programName[kVstMaxProgNameLen + 1];
     std::set< std::string > _canDo;
 
-  // UltrasonicLite
+  // Hypersonic
 
-  double biquadA[15];
+	enum {
+		fix_freq,
+		fix_reso,
+		fix_a0,
+		fix_a1,
+		fix_a2,
+		fix_b1,
+		fix_b2,
+		fix_sL1,
+		fix_sL2,
+		fix_sR1,
+		fix_sR2,
+		fix_total
+	}; //fixed frequency biquad filter for ultrasonics, stereo
+
+	double fixA[fix_total];
+	double fixB[fix_total];
+	double fixC[fix_total];
+	double fixD[fix_total];
+	double fixE[fix_total];
 
   // Interstage
 
@@ -80,6 +104,20 @@ private:
 	double iirSampleDR;
 	double iirSampleER;
 	double iirSampleFR;
+
+  // BiquadOneHalf HPF
+
+	double biquad_hpf_AL[9];
+	double biquad_hpf_AR[9];
+	double biquad_hpf_BL[9];
+	double biquad_hpf_BR[9];
+
+  // BiquadOneHalf LPF
+
+	double biquad_lpf_AL[9];
+	double biquad_lpf_AR[9];
+	double biquad_lpf_BL[9];
+	double biquad_lpf_BR[9];
 
   // Tape
 
@@ -135,6 +173,11 @@ private:
   float I;
   float J;
   float K;
+  float L;
+  float M;
+  float N;
+  float O;
+  float P;
 };
 
 #endif

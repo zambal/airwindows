@@ -9,10 +9,10 @@
 
 void ConsoleZChannel::processReplacing(float **inputs, float **outputs, VstInt32 sampleFrames)
 {
-    float* in1  =  inputs[0];
-    float* in2  =  inputs[1];
-    float* out1 = outputs[0];
-    float* out2 = outputs[1];
+  float* in1  =  inputs[0];
+  float* in2  =  inputs[1];
+  float* out1 = outputs[0];
+  float* out2 = outputs[1];
 
 	VstInt32 inFramesToProcess = sampleFrames; //vst doesn't give us this as a separate variable so we'll make it
 	double overallscale = 1.0;
@@ -25,20 +25,35 @@ void ConsoleZChannel::processReplacing(float **inputs, float **outputs, VstInt32
 
 	double inputSampleL;
 	double inputSampleR;
+	double outSample;
+	double KK;
+	double norm;
 
-	// UltrasonicLite
+	// Hypersonic
 
-	biquadA[0] = 24000.0 / getSampleRate();
-	if (getSampleRate() < 88000.0) biquadA[0] = 21000.0 / getSampleRate();
-    biquadA[1] = 0.70710678;
+	double cutoff = 25000.0 / getSampleRate();
+	if (cutoff > 0.45) cutoff = 0.45; //don't crash if run at 44.1k
 
-	double KK = tan(M_PI * biquadA[0]); //lowpass
-	double norm = 1.0 / (1.0 + KK / biquadA[1] + KK * KK);
-	biquadA[2] = KK * KK * norm;
-	biquadA[3] = 2.0 * biquadA[2];
-	biquadA[4] = biquadA[2];
-	biquadA[5] = 2.0 * (KK * KK - 1.0) * norm;
-	biquadA[6] = (1.0 - KK / biquadA[1] + KK * KK) * norm;
+	fixG[fix_freq] = fixF[fix_freq] = cutoff;
+
+	fixF[fix_reso] = 0.70710678;
+	fixG[fix_reso] = 0.59051105;
+
+	KK = tan(M_PI * fixF[fix_freq]);
+	norm = 1.0 / (1.0 + KK / fixF[fix_reso] + KK * KK);
+	fixF[fix_a0] = KK * KK * norm;
+	fixF[fix_a1] = 2.0 * fixF[fix_a0];
+	fixF[fix_a2] = fixF[fix_a0];
+	fixF[fix_b1] = 2.0 * (KK * KK - 1.0) * norm;
+	fixF[fix_b2] = (1.0 - KK / fixF[fix_reso] + KK * KK) * norm;
+	
+	KK = tan(M_PI * fixG[fix_freq]);
+	norm = 1.0 / (1.0 + KK / fixG[fix_reso] + KK * KK);
+	fixG[fix_a0] = KK * KK * norm;
+	fixG[fix_a1] = 2.0 * fixG[fix_a0];
+	fixG[fix_a2] = fixG[fix_a0];
+	fixG[fix_b1] = 2.0 * (KK * KK - 1.0) * norm;
+	fixG[fix_b2] = (1.0 - KK / fixG[fix_reso] + KK * KK) * norm;
 
 	// Desk 4
 
@@ -355,6 +370,17 @@ void ConsoleZChannel::processReplacing(float **inputs, float **outputs, VstInt32
 		}
 		//end compressor
 
+		// Hypersonic
+
+		outSample = (inputSampleL * fixF[fix_a0]) + fixF[fix_sL1];
+		fixF[fix_sL1] = (inputSampleL * fixF[fix_a1]) - (outSample * fixF[fix_b1]) + fixF[fix_sL2];
+		fixF[fix_sL2] = (inputSampleL * fixF[fix_a2]) - (outSample * fixF[fix_b2]);
+		inputSampleL = outSample; //fixed biquad filtering ultrasonics
+		outSample = (inputSampleR * fixF[fix_a0]) + fixF[fix_sR1];
+		fixF[fix_sR1] = (inputSampleR * fixF[fix_a1]) - (outSample * fixF[fix_b1]) + fixF[fix_sR2];
+		fixF[fix_sR2] = (inputSampleR * fixF[fix_a2]) - (outSample * fixF[fix_b2]);
+		inputSampleR = outSample; //fixed biquad filtering ultrasonics
+	
 		// Desk 4
 		if(wet > 0.0) {
 			drySampleL = inputSampleL;
@@ -490,13 +516,16 @@ void ConsoleZChannel::processReplacing(float **inputs, float **outputs, VstInt32
 			}
 		}
 
-		// UltrasonicLite
+		// Hypersonic
 
-		double outSampleL = biquadA[2]*inputSampleL+biquadA[3]*biquadA[7]+biquadA[4]*biquadA[8]-biquadA[5]*biquadA[9]-biquadA[6]*biquadA[10];
-		biquadA[8] = biquadA[7]; biquadA[7] = inputSampleL; inputSampleL = outSampleL; biquadA[10] = biquadA[9]; biquadA[9] = inputSampleL; //DF1 left
-
-		double outSampleR = biquadA[2]*inputSampleR+biquadA[3]*biquadA[11]+biquadA[4]*biquadA[12]-biquadA[5]*biquadA[13]-biquadA[6]*biquadA[14];
-		biquadA[12] = biquadA[11]; biquadA[11] = inputSampleR; inputSampleR = outSampleR; biquadA[14] = biquadA[13]; biquadA[13] = inputSampleR; //DF1 right
+		outSample = (inputSampleL * fixG[fix_a0]) + fixG[fix_sL1];
+		fixG[fix_sL1] = (inputSampleL * fixG[fix_a1]) - (outSample * fixG[fix_b1]) + fixG[fix_sL2];
+		fixG[fix_sL2] = (inputSampleL * fixG[fix_a2]) - (outSample * fixG[fix_b2]);
+		inputSampleL = outSample; //fixed biquad filtering ultrasonics
+		outSample = (inputSampleR * fixG[fix_a0]) + fixG[fix_sR1];
+		fixG[fix_sR1] = (inputSampleR * fixG[fix_a1]) - (outSample * fixG[fix_b1]) + fixG[fix_sR2];
+		fixG[fix_sR2] = (inputSampleR * fixG[fix_a2]) - (outSample * fixG[fix_b2]);
+		inputSampleR = outSample; //fixed biquad filtering ultrasonics
 
 		// ConsoleLA
 
@@ -739,10 +768,10 @@ void ConsoleZChannel::processReplacing(float **inputs, float **outputs, VstInt32
 
 void ConsoleZChannel::processDoubleReplacing(double **inputs, double **outputs, VstInt32 sampleFrames)
 {
-    double* in1  =  inputs[0];
-    double* in2  =  inputs[1];
-    double* out1 = outputs[0];
-    double* out2 = outputs[1];
+  double* in1  =  inputs[0];
+  double* in2  =  inputs[1];
+  double* out1 = outputs[0];
+  double* out2 = outputs[1];
 
 	VstInt32 inFramesToProcess = sampleFrames; //vst doesn't give us this as a separate variable so we'll make it
 	double overallscale = 1.0;
@@ -755,20 +784,35 @@ void ConsoleZChannel::processDoubleReplacing(double **inputs, double **outputs, 
 
 	double inputSampleL;
 	double inputSampleR;
+	double outSample;
+	double KK;
+	double norm;
 
-	// UltrasonicLite
+	// Hypersonic
 
-	biquadA[0] = 24000.0 / getSampleRate();
-	if (getSampleRate() < 88000.0) biquadA[0] = 21000.0 / getSampleRate();
-    biquadA[1] = 0.70710678;
+	double cutoff = 25000.0 / getSampleRate();
+	if (cutoff > 0.45) cutoff = 0.45; //don't crash if run at 44.1k
 
-	double KK = tan(M_PI * biquadA[0]); //lowpass
-	double norm = 1.0 / (1.0 + KK / biquadA[1] + KK * KK);
-	biquadA[2] = KK * KK * norm;
-	biquadA[3] = 2.0 * biquadA[2];
-	biquadA[4] = biquadA[2];
-	biquadA[5] = 2.0 * (KK * KK - 1.0) * norm;
-	biquadA[6] = (1.0 - KK / biquadA[1] + KK * KK) * norm;
+	fixG[fix_freq] = fixF[fix_freq] = cutoff;
+
+	fixF[fix_reso] = 0.70710678;
+	fixG[fix_reso] = 0.59051105;
+
+	KK = tan(M_PI * fixF[fix_freq]);
+	norm = 1.0 / (1.0 + KK / fixF[fix_reso] + KK * KK);
+	fixF[fix_a0] = KK * KK * norm;
+	fixF[fix_a1] = 2.0 * fixF[fix_a0];
+	fixF[fix_a2] = fixF[fix_a0];
+	fixF[fix_b1] = 2.0 * (KK * KK - 1.0) * norm;
+	fixF[fix_b2] = (1.0 - KK / fixF[fix_reso] + KK * KK) * norm;
+	
+	KK = tan(M_PI * fixG[fix_freq]);
+	norm = 1.0 / (1.0 + KK / fixG[fix_reso] + KK * KK);
+	fixG[fix_a0] = KK * KK * norm;
+	fixG[fix_a1] = 2.0 * fixG[fix_a0];
+	fixG[fix_a2] = fixG[fix_a0];
+	fixG[fix_b1] = 2.0 * (KK * KK - 1.0) * norm;
+	fixG[fix_b2] = (1.0 - KK / fixG[fix_reso] + KK * KK) * norm;
 
 	// Desk 4
 
@@ -1085,6 +1129,17 @@ void ConsoleZChannel::processDoubleReplacing(double **inputs, double **outputs, 
 		}
 		//end compressor
 
+		// Hypersonic
+
+		outSample = (inputSampleL * fixF[fix_a0]) + fixF[fix_sL1];
+		fixF[fix_sL1] = (inputSampleL * fixF[fix_a1]) - (outSample * fixF[fix_b1]) + fixF[fix_sL2];
+		fixF[fix_sL2] = (inputSampleL * fixF[fix_a2]) - (outSample * fixF[fix_b2]);
+		inputSampleL = outSample; //fixed biquad filtering ultrasonics
+		outSample = (inputSampleR * fixF[fix_a0]) + fixF[fix_sR1];
+		fixF[fix_sR1] = (inputSampleR * fixF[fix_a1]) - (outSample * fixF[fix_b1]) + fixF[fix_sR2];
+		fixF[fix_sR2] = (inputSampleR * fixF[fix_a2]) - (outSample * fixF[fix_b2]);
+		inputSampleR = outSample; //fixed biquad filtering ultrasonics
+	
 		// Desk 4
 		if(wet > 0.0) {
 			drySampleL = inputSampleL;
@@ -1220,13 +1275,16 @@ void ConsoleZChannel::processDoubleReplacing(double **inputs, double **outputs, 
 			}
 		}
 
-		// UltrasonicLite
+		// Hypersonic
 
-		double outSampleL = biquadA[2]*inputSampleL+biquadA[3]*biquadA[7]+biquadA[4]*biquadA[8]-biquadA[5]*biquadA[9]-biquadA[6]*biquadA[10];
-		biquadA[8] = biquadA[7]; biquadA[7] = inputSampleL; inputSampleL = outSampleL; biquadA[10] = biquadA[9]; biquadA[9] = inputSampleL; //DF1 left
-
-		double outSampleR = biquadA[2]*inputSampleR+biquadA[3]*biquadA[11]+biquadA[4]*biquadA[12]-biquadA[5]*biquadA[13]-biquadA[6]*biquadA[14];
-		biquadA[12] = biquadA[11]; biquadA[11] = inputSampleR; inputSampleR = outSampleR; biquadA[14] = biquadA[13]; biquadA[13] = inputSampleR; //DF1 right
+		outSample = (inputSampleL * fixG[fix_a0]) + fixG[fix_sL1];
+		fixG[fix_sL1] = (inputSampleL * fixG[fix_a1]) - (outSample * fixG[fix_b1]) + fixG[fix_sL2];
+		fixG[fix_sL2] = (inputSampleL * fixG[fix_a2]) - (outSample * fixG[fix_b2]);
+		inputSampleL = outSample; //fixed biquad filtering ultrasonics
+		outSample = (inputSampleR * fixG[fix_a0]) + fixG[fix_sR1];
+		fixG[fix_sR1] = (inputSampleR * fixG[fix_a1]) - (outSample * fixG[fix_b1]) + fixG[fix_sR2];
+		fixG[fix_sR2] = (inputSampleR * fixG[fix_a2]) - (outSample * fixG[fix_b2]);
+		inputSampleR = outSample; //fixed biquad filtering ultrasonics
 
 		// ConsoleLA
 

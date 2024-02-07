@@ -14,9 +14,9 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
   float* out1 = outputs[0];
   float* out2 = outputs[1];
 
-	bool enableUltrasonic = I > 0.0;
-	bool enableInterstage = J > 0.0;
-	bool enableuLaw = K > 0.0;
+	bool enableHPF = N > 0.0;
+	bool enableLPF = O > 0.0;
+	bool enableuLaw = P > 0.0;
 
 	double drySampleL;
 	double drySampleR;
@@ -25,24 +25,102 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
 	overallscale /= 44100.0;
 	overallscale *= getSampleRate();
 
-	// UltrasonicLite
-
 	double KK;
-	double u_norm;
+	double norm;
 
-	if(enableUltrasonic) {
-		biquadA[0] = 24000.0 / getSampleRate();
-		if (getSampleRate() < 88000.0) biquadA[0] = 21000.0 / getSampleRate();
-	    biquadA[1] = 0.70710678;
+	// BitshiftGain
 
-		KK = tan(M_PI * biquadA[0]); //lowpass
-		u_norm = 1.0 / (1.0 + KK / biquadA[1] + KK * KK);
-		biquadA[2] = KK * KK * u_norm;
-		biquadA[3] = 2.0 * biquadA[2];
-		biquadA[4] = biquadA[2];
-		biquadA[5] = 2.0 * (KK * KK - 1.0) * u_norm;
-		biquadA[6] = (1.0 - KK / biquadA[1] + KK * KK) * u_norm;
+	double input_gain = 1.0;
+	switch ((int)(A * 32)-16)
+	{
+		case -16: input_gain = 0.0000152587890625; break;
+		case -15: input_gain = 0.000030517578125; break;
+		case -14: input_gain = 0.00006103515625; break;
+		case -13: input_gain = 0.0001220703125; break;
+		case -12: input_gain = 0.000244140625; break;
+		case -11: input_gain = 0.00048828125; break;
+		case -10: input_gain = 0.0009765625; break;
+		case -9: input_gain = 0.001953125; break;
+		case -8: input_gain = 0.00390625; break;
+		case -7: input_gain = 0.0078125; break;
+		case -6: input_gain = 0.015625; break;
+		case -5: input_gain = 0.03125; break;
+		case -4: input_gain = 0.0625; break;
+		case -3: input_gain = 0.125; break;
+		case -2: input_gain = 0.25; break;
+		case -1: input_gain = 0.5; break;
+		case 0: input_gain = 1.0; break;
+		case 1: input_gain = 2.0; break;
+		case 2: input_gain = 4.0; break;
+		case 3: input_gain = 8.0; break;
+		case 4: input_gain = 16.0; break;
+		case 5: input_gain = 32.0; break;
+		case 6: input_gain = 64.0; break;
+		case 7: input_gain = 128.0; break;
+		case 8: input_gain = 256.0; break;
+		case 9: input_gain = 512.0; break;
+		case 10: input_gain = 1024.0; break;
+		case 11: input_gain = 2048.0; break;
+		case 12: input_gain = 4096.0; break;
+		case 13: input_gain = 8192.0; break;
+		case 14: input_gain = 16384.0; break;
+		case 15: input_gain = 32768.0; break;
+		case 16: input_gain = 65536.0; break;
 	}
+	//we are directly punching in the gain values rather than calculating them
+
+	// Hypersonic
+
+	double cutoff = 25000.0 / getSampleRate();
+	if (cutoff > 0.45) cutoff = 0.45; //don't crash if run at 44.1k
+
+	fixE[fix_freq] = fixD[fix_freq] = fixC[fix_freq] = fixB[fix_freq] = fixA[fix_freq] = cutoff;
+
+  fixA[fix_reso] = 4.46570214;
+	fixB[fix_reso] = 1.51387132;
+	fixC[fix_reso] = 0.93979296;
+	fixD[fix_reso] = 0.70710678;
+	fixE[fix_reso] = 0.59051105;
+
+	KK = tan(M_PI * fixA[fix_freq]); //lowpass
+	norm = 1.0 / (1.0 + KK / fixA[fix_reso] + KK * KK);
+	fixA[fix_a0] = KK * KK * norm;
+	fixA[fix_a1] = 2.0 * fixA[fix_a0];
+	fixA[fix_a2] = fixA[fix_a0];
+	fixA[fix_b1] = 2.0 * (KK * KK - 1.0) * norm;
+	fixA[fix_b2] = (1.0 - KK / fixA[fix_reso] + KK * KK) * norm;
+
+	KK = tan(M_PI * fixB[fix_freq]);
+	norm = 1.0 / (1.0 + KK / fixB[fix_reso] + KK * KK);
+	fixB[fix_a0] = KK * KK * norm;
+	fixB[fix_a1] = 2.0 * fixB[fix_a0];
+	fixB[fix_a2] = fixB[fix_a0];
+	fixB[fix_b1] = 2.0 * (KK * KK - 1.0) * norm;
+	fixB[fix_b2] = (1.0 - KK / fixB[fix_reso] + KK * KK) * norm;
+
+	KK = tan(M_PI * fixC[fix_freq]);
+	norm = 1.0 / (1.0 + KK / fixC[fix_reso] + KK * KK);
+	fixC[fix_a0] = KK * KK * norm;
+	fixC[fix_a1] = 2.0 * fixC[fix_a0];
+	fixC[fix_a2] = fixC[fix_a0];
+	fixC[fix_b1] = 2.0 * (KK * KK - 1.0) * norm;
+	fixC[fix_b2] = (1.0 - KK / fixC[fix_reso] + KK * KK) * norm;
+
+	KK = tan(M_PI * fixD[fix_freq]);
+	norm = 1.0 / (1.0 + KK / fixD[fix_reso] + KK * KK);
+	fixD[fix_a0] = KK * KK * norm;
+	fixD[fix_a1] = 2.0 * fixD[fix_a0];
+	fixD[fix_a2] = fixD[fix_a0];
+	fixD[fix_b1] = 2.0 * (KK * KK - 1.0) * norm;
+	fixD[fix_b2] = (1.0 - KK / fixD[fix_reso] + KK * KK) * norm;
+
+	KK = tan(M_PI * fixE[fix_freq]);
+	norm = 1.0 / (1.0 + KK / fixE[fix_reso] + KK * KK);
+	fixE[fix_a0] = KK * KK * norm;
+	fixE[fix_a1] = 2.0 * fixE[fix_a0];
+	fixE[fix_a2] = fixE[fix_a0];
+	fixE[fix_b1] = 2.0 * (KK * KK - 1.0) * norm;
+	fixE[fix_b2] = (1.0 - KK / fixE[fix_reso] + KK * KK) * norm;
 
 	// Interstage
 
@@ -50,10 +128,46 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
 	double iirAmount = 0.00295 / overallscale;
 	double threshold = 0.381966011250105;
 
+	// BiquadOneHalf HPF
+
+	biquad_hpf_AL[0] = ((B*B*B*0.9999)+0.0001)*0.499;
+	if (biquad_hpf_AL[0] < 0.0001) biquad_hpf_AL[0] = 0.0001;
+	
+    biquad_hpf_AL[1] = (C*C*C*29.99)+0.01;
+	if (biquad_hpf_AL[1] < 0.0001) biquad_hpf_AL[1] = 0.0001;
+
+	KK = tan(M_PI * biquad_hpf_AL[0]);
+	norm = 1.0 / (1.0 + KK / biquad_hpf_AL[1] + KK * KK);
+	biquad_hpf_AL[2] = norm;
+	biquad_hpf_AL[3] = -2.0 * biquad_hpf_AL[2];
+	biquad_hpf_AL[4] = biquad_hpf_AL[2];
+	biquad_hpf_AL[5] = 2.0 * (KK * KK - 1.0) * norm;
+	biquad_hpf_AL[6] = (1.0 - KK / biquad_hpf_AL[1] + KK * KK) * norm;
+
+	for (int x = 0; x < 7; x++) {biquad_hpf_AR[x] = biquad_hpf_BL[x] = biquad_hpf_BR[x] = biquad_hpf_AL[x];}
+
+	// BiquadOneHalf LPF
+
+	biquad_lpf_AL[0] = ((D*D*D*0.9999)+0.0001)*0.499;
+	if (biquad_lpf_AL[0] < 0.0001) biquad_lpf_AL[0] = 0.0001;
+	
+    biquad_lpf_AL[1] = (E*E*E*29.99)+0.01;
+	if (biquad_lpf_AL[1] < 0.0001) biquad_lpf_AL[1] = 0.0001;
+
+	KK = tan(M_PI * biquad_lpf_AL[0]);
+	norm = 1.0 / (1.0 + KK / biquad_lpf_AL[1] + KK * KK);
+	biquad_lpf_AL[2] = KK * KK * norm;
+	biquad_lpf_AL[3] = 2.0 * biquad_lpf_AL[2];
+	biquad_lpf_AL[4] = biquad_lpf_AL[2];
+	biquad_lpf_AL[5] = 2.0 * (KK * KK - 1.0) * norm;
+	biquad_lpf_AL[6] = (1.0 - KK / biquad_lpf_AL[1] + KK * KK) * norm;
+
+	for (int x = 0; x < 7; x++) {biquad_lpf_AR[x] = biquad_lpf_BL[x] = biquad_lpf_BR[x] = biquad_lpf_AL[x];}
+
 	// Tape
 
-	double inputgain = pow(10.0,((A-0.5)*24.0)/20.0);
-	double bumpgain = B*0.1;
+	double inputgain = pow(10.0,((F-0.5)*24.0)/20.0);
+	double bumpgain = G*0.1;
 	double HeadBumpFreq = 0.12/overallscale;
 	double softness = 0.618033988749894848204586;
 	double RollAmount = (1.0 - softness) / overallscale;
@@ -61,75 +175,73 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
 	//[1] is resonance, 0.7071 is Butterworth. Also can't be zero
 	biquadAL[0] = biquadBL[0] = biquadAR[0] = biquadBR[0] = 0.0072/overallscale;
 	biquadAL[1] = biquadBL[1] = biquadAR[1] = biquadBR[1] = 0.0009;
-	double K = tan(M_PI * biquadBR[0]);
-	double norm = 1.0 / (1.0 + K / biquadBR[1] + K * K);
-	biquadAL[2] = biquadBL[2] = biquadAR[2] = biquadBR[2] = K / biquadBR[1] * norm;
+	KK = tan(M_PI * biquadBR[0]);
+	norm = 1.0 / (1.0 + KK / biquadBR[1] + KK * KK);
+	biquadAL[2] = biquadBL[2] = biquadAR[2] = biquadBR[2] = KK / biquadBR[1] * norm;
 	biquadAL[4] = biquadBL[4] = biquadAR[4] = biquadBR[4] = -biquadBR[2];
-	biquadAL[5] = biquadBL[5] = biquadAR[5] = biquadBR[5] = 2.0 * (K * K - 1.0) * norm;
-	biquadAL[6] = biquadBL[6] = biquadAR[6] = biquadBR[6] = (1.0 - K / biquadBR[1] + K * K) * norm;
+	biquadAL[5] = biquadBL[5] = biquadAR[5] = biquadBR[5] = 2.0 * (KK * KK - 1.0) * norm;
+	biquadAL[6] = biquadBL[6] = biquadAR[6] = biquadBR[6] = (1.0 - KK / biquadBR[1] + KK * KK) * norm;
 
 	biquadCL[0] = biquadDL[0] = biquadCR[0] = biquadDR[0] = 0.032/overallscale;
 	biquadCL[1] = biquadDL[1] = biquadCR[1] = biquadDR[1] = 0.0007;
-	K = tan(M_PI * biquadDR[0]);
-	norm = 1.0 / (1.0 + K / biquadDR[1] + K * K);
-	biquadCL[2] = biquadDL[2] = biquadCR[2] = biquadDR[2] = K / biquadDR[1] * norm;
+	KK = tan(M_PI * biquadDR[0]);
+	norm = 1.0 / (1.0 + KK / biquadDR[1] + KK * KK);
+	biquadCL[2] = biquadDL[2] = biquadCR[2] = biquadDR[2] = KK / biquadDR[1] * norm;
 	biquadCL[4] = biquadDL[4] = biquadCR[4] = biquadDR[4] = -biquadDR[2];
-	biquadCL[5] = biquadDL[5] = biquadCR[5] = biquadDR[5] = 2.0 * (K * K - 1.0) * norm;
-	biquadCL[6] = biquadDL[6] = biquadCR[6] = biquadDR[6] = (1.0 - K / biquadDR[1] + K * K) * norm;
+	biquadCL[5] = biquadDL[5] = biquadCR[5] = biquadDR[5] = 2.0 * (KK * KK - 1.0) * norm;
+	biquadCL[6] = biquadDL[6] = biquadCR[6] = biquadDR[6] = (1.0 - KK / biquadDR[1] + KK * KK) * norm;
 
 	// BitshiftGain
 
-	int bitshiftGain = (C * 32)-16;
-	double gain = 1.0;
-	switch (bitshiftGain)
+	double trim_gain = 1.0;
+	switch ((int)(H * 32)-16)
 	{
-		case -16: gain = 0.0000152587890625; break;
-		case -15: gain = 0.000030517578125; break;
-		case -14: gain = 0.00006103515625; break;
-		case -13: gain = 0.0001220703125; break;
-		case -12: gain = 0.000244140625; break;
-		case -11: gain = 0.00048828125; break;
-		case -10: gain = 0.0009765625; break;
-		case -9: gain = 0.001953125; break;
-		case -8: gain = 0.00390625; break;
-		case -7: gain = 0.0078125; break;
-		case -6: gain = 0.015625; break;
-		case -5: gain = 0.03125; break;
-		case -4: gain = 0.0625; break;
-		case -3: gain = 0.125; break;
-		case -2: gain = 0.25; break;
-		case -1: gain = 0.5; break;
-		case 0: gain = 1.0; break;
-		case 1: gain = 2.0; break;
-		case 2: gain = 4.0; break;
-		case 3: gain = 8.0; break;
-		case 4: gain = 16.0; break;
-		case 5: gain = 32.0; break;
-		case 6: gain = 64.0; break;
-		case 7: gain = 128.0; break;
-		case 8: gain = 256.0; break;
-		case 9: gain = 512.0; break;
-		case 10: gain = 1024.0; break;
-		case 11: gain = 2048.0; break;
-		case 12: gain = 4096.0; break;
-		case 13: gain = 8192.0; break;
-		case 14: gain = 16384.0; break;
-		case 15: gain = 32768.0; break;
-		case 16: gain = 65536.0; break;
+		case -16: trim_gain = 0.0000152587890625; break;
+		case -15: trim_gain = 0.000030517578125; break;
+		case -14: trim_gain = 0.00006103515625; break;
+		case -13: trim_gain = 0.0001220703125; break;
+		case -12: trim_gain = 0.000244140625; break;
+		case -11: trim_gain = 0.00048828125; break;
+		case -10: trim_gain = 0.0009765625; break;
+		case -9: trim_gain = 0.001953125; break;
+		case -8: trim_gain = 0.00390625; break;
+		case -7: trim_gain = 0.0078125; break;
+		case -6: trim_gain = 0.015625; break;
+		case -5: trim_gain = 0.03125; break;
+		case -4: trim_gain = 0.0625; break;
+		case -3: trim_gain = 0.125; break;
+		case -2: trim_gain = 0.25; break;
+		case -1: trim_gain = 0.5; break;
+		case 0: trim_gain = 1.0; break;
+		case 1: trim_gain = 2.0; break;
+		case 2: trim_gain = 4.0; break;
+		case 3: trim_gain = 8.0; break;
+		case 4: trim_gain = 16.0; break;
+		case 5: trim_gain = 32.0; break;
+		case 6: trim_gain = 64.0; break;
+		case 7: trim_gain = 128.0; break;
+		case 8: trim_gain = 256.0; break;
+		case 9: trim_gain = 512.0; break;
+		case 10: trim_gain = 1024.0; break;
+		case 11: trim_gain = 2048.0; break;
+		case 12: trim_gain = 4096.0; break;
+		case 13: trim_gain = 8192.0; break;
+		case 14: trim_gain = 16384.0; break;
+		case 15: trim_gain = 32768.0; break;
+		case 16: trim_gain = 65536.0; break;
 	}
 	//we are directly punching in the gain values rather than calculating them
 
 	// Creature
 
-	double source = 1.0-pow(1.0-D,5);
-	int stages = (pow(E,2)*32.0*sqrt(overallscale))+1;
-	double wet = (F*2.0)-1.0; //inv-dry-wet for highpass
-	double dry = 2.0-(F*2.0);
+	double source = 1.0-pow(1.0-I,5);
+	int stages = (pow(J,2)*32.0*sqrt(overallscale))+1;
+	double wet = (K*2.0)-1.0; //inv-dry-wet for highpass
+	double dry = 2.0-(K*2.0);
 	if (dry > 1.0) dry = 1.0; //full dry for use with inv, to 0.0 at full wet
 
 
 	// ToneSlant
-
 
 	double ts_inputSampleL;
 	double ts_inputSampleR;
@@ -139,8 +251,8 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
 	double ts_accumulatorSampleR;
 	double ts_drySampleL;
 	double ts_drySampleR;
-	double ts_overallscale = (G*99.0)+1.0;
-	double ts_applySlant = (H*2.0)-1.0;
+	double ts_overallscale = (L*99.0)+1.0;
+	double ts_applySlant = (M*2.0)-1.0;
 	
 	
 	ts_f[0] = 1.0 / ts_overallscale;
@@ -158,71 +270,25 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
   while (--sampleFrames >= 0)
   {
 
-		double inputSampleL = *in1;
-		double inputSampleR = *in2;
+		double inputSampleL = *in1 * input_gain;
+		double inputSampleR = *in2 * input_gain;
+		double outSample;
 
 		if (fabs(inputSampleL)<1.18e-23) inputSampleL = fpdL * 1.18e-17;
 		if (fabs(inputSampleR)<1.18e-23) inputSampleR = fpdR * 1.18e-17;
 
-		// UltrasonicLite
+		// Hypersonic
 
-		if(enableUltrasonic) {
-			double outSampleL = biquadA[2]*inputSampleL+biquadA[3]*biquadA[7]+biquadA[4]*biquadA[8]-biquadA[5]*biquadA[9]-biquadA[6]*biquadA[10];
-			biquadA[8] = biquadA[7]; biquadA[7] = inputSampleL; inputSampleL = outSampleL; biquadA[10] = biquadA[9]; biquadA[9] = inputSampleL; //DF1 left
-
-			double outSampleR = biquadA[2]*inputSampleR+biquadA[3]*biquadA[11]+biquadA[4]*biquadA[12]-biquadA[5]*biquadA[13]-biquadA[6]*biquadA[14];
-			biquadA[12] = biquadA[11]; biquadA[11] = inputSampleR; inputSampleR = outSampleR; biquadA[14] = biquadA[13]; biquadA[13] = inputSampleR; //DF1 right
-		}
-
-		// Interstage
-
-		if(enableInterstage) {
-			drySampleL = inputSampleL;
-			drySampleR = inputSampleR;
-
-			if (flip) {
-				iirSampleAL = (iirSampleAL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleAL;
-				iirSampleCL = (iirSampleCL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleCL;
-				iirSampleEL = (iirSampleEL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleEL;
-				inputSampleL = drySampleL - inputSampleL;
-				//make highpass
-				if (inputSampleL - iirSampleAL > threshold) inputSampleL = iirSampleAL + threshold;
-				if (inputSampleL - iirSampleAL < -threshold) inputSampleL = iirSampleAL - threshold;
-				//slew limit against lowpassed reference point
-
-				iirSampleAR = (iirSampleAR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleAR;
-				iirSampleCR = (iirSampleCR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleCR;
-				iirSampleER = (iirSampleER * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleER;
-				inputSampleR = drySampleR - inputSampleR;
-				//make highpass
-				if (inputSampleR - iirSampleAR > threshold) inputSampleR = iirSampleAR + threshold;
-				if (inputSampleR - iirSampleAR < -threshold) inputSampleR = iirSampleAR - threshold;
-				//slew limit against lowpassed reference point
-			} else {
-				iirSampleBL = (iirSampleBL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleBL;
-				iirSampleDL = (iirSampleDL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleDL;
-				iirSampleFL = (iirSampleFL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleFL;
-				inputSampleL = drySampleL - inputSampleL;
-				//make highpass
-				if (inputSampleL - iirSampleBL > threshold) inputSampleL = iirSampleBL + threshold;
-				if (inputSampleL - iirSampleBL < -threshold) inputSampleL = iirSampleBL - threshold;
-				//slew limit against lowpassed reference point
-
-				iirSampleBR = (iirSampleBR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleBR;
-				iirSampleDR = (iirSampleDR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleDR;
-				iirSampleFR = (iirSampleFR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleFR;
-				inputSampleR = drySampleR - inputSampleR;
-				//make highpass
-				if (inputSampleR - iirSampleBR > threshold) inputSampleR = iirSampleBR + threshold;
-				if (inputSampleR - iirSampleBR < -threshold) inputSampleR = iirSampleBR - threshold;
-				//slew limit against lowpassed reference point
-			}
-		}
+		outSample = (inputSampleL * fixA[fix_a0]) + fixA[fix_sL1];
+		fixA[fix_sL1] = (inputSampleL * fixA[fix_a1]) - (outSample * fixA[fix_b1]) + fixA[fix_sL2];
+		fixA[fix_sL2] = (inputSampleL * fixA[fix_a2]) - (outSample * fixA[fix_b2]);
+		inputSampleL = outSample; //fixed biquad filtering ultrasonics
+		outSample = (inputSampleR * fixA[fix_a0]) + fixA[fix_sR1];
+		fixA[fix_sR1] = (inputSampleR * fixA[fix_a1]) - (outSample * fixA[fix_b1]) + fixA[fix_sR2];
+		fixA[fix_sR2] = (inputSampleR * fixA[fix_a2]) - (outSample * fixA[fix_b2]);
+		inputSampleR = outSample; //fixed biquad filtering ultrasonics
 
 		// Tape
-
-		drySampleL = inputSampleL;
-		drySampleR = inputSampleR;
 
 		double HighsSampleL = 0.0;
 		double HighsSampleR = 0.0;
@@ -232,6 +298,86 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
 
 		if (flip)
 		{
+			// Interstage
+			
+			drySampleL = inputSampleL;
+			drySampleR = inputSampleR;
+
+			iirSampleAL = (iirSampleAL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleAL;
+			iirSampleCL = (iirSampleCL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleCL;
+			iirSampleEL = (iirSampleEL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleEL;
+			inputSampleL = drySampleL - inputSampleL;
+			//make highpass
+			if (inputSampleL - iirSampleAL > threshold) inputSampleL = iirSampleAL + threshold;
+			if (inputSampleL - iirSampleAL < -threshold) inputSampleL = iirSampleAL - threshold;
+			//slew limit against lowpassed reference point
+
+			iirSampleAR = (iirSampleAR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleAR;
+			iirSampleCR = (iirSampleCR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleCR;
+			iirSampleER = (iirSampleER * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleER;
+			inputSampleR = drySampleR - inputSampleR;
+			//make highpass
+			if (inputSampleR - iirSampleAR > threshold) inputSampleR = iirSampleAR + threshold;
+			if (inputSampleR - iirSampleAR < -threshold) inputSampleR = iirSampleAR - threshold;
+			//slew limit against lowpassed reference point
+
+			if(enableHPF) {
+				//inputSampleL = sin(inputSampleL);
+				inputSampleL += ((pow(inputSampleL,5)/128.0) + (pow(inputSampleL,9)/262144.0)) - ((pow(inputSampleL,3)/8.0) + (pow(inputSampleL,7)/4096.0));
+				tempSample = (inputSampleL * biquad_hpf_AL[2]) + biquad_hpf_AL[7];
+				biquad_hpf_AL[7] = (inputSampleL * biquad_hpf_AL[3]) - (tempSample * biquad_hpf_AL[5]) + biquad_hpf_AL[8];
+				biquad_hpf_AL[8] = (inputSampleL * biquad_hpf_AL[4]) - (tempSample * biquad_hpf_AL[6]);
+				inputSampleL = tempSample;
+
+				if (inputSampleL > 1.0) inputSampleL = 1.0;
+				if (inputSampleL < -1.0) inputSampleL = -1.0;
+				//inputSampleL = asin(inputSampleL);
+				inputSampleL += (pow(inputSampleL,3)/4.0)+(pow(inputSampleL,5)/8.0)+(pow(inputSampleL,7)/16.0)+(pow(inputSampleL,9)/32.0);
+
+				//inputSampleR = sin(inputSampleR);
+				inputSampleR += ((pow(inputSampleR,5)/128.0) + (pow(inputSampleR,9)/262144.0)) - ((pow(inputSampleR,3)/8.0) + (pow(inputSampleR,7)/4096.0));
+				tempSample = (inputSampleR * biquad_hpf_AR[2]) + biquad_hpf_AR[7];
+				biquad_hpf_AR[7] = (inputSampleR * biquad_hpf_AR[3]) - (tempSample * biquad_hpf_AR[5]) + biquad_hpf_AR[8];
+				biquad_hpf_AR[8] = (inputSampleR * biquad_hpf_AR[4]) - (tempSample * biquad_hpf_AR[6]);
+				inputSampleR = tempSample;
+
+				if (inputSampleR > 1.0) inputSampleR = 1.0;
+				if (inputSampleR < -1.0) inputSampleR = -1.0;
+				//inputSampleR = asin(inputSampleR);
+				inputSampleR += (pow(inputSampleR,3)/4.0)+(pow(inputSampleR,5)/8.0)+(pow(inputSampleR,7)/16.0)+(pow(inputSampleR,9)/32.0);
+			}
+
+			if(enableLPF) {
+				//inputSampleL = sin(inputSampleL);
+				inputSampleL += ((pow(inputSampleL,5)/128.0) + (pow(inputSampleL,9)/262144.0)) - ((pow(inputSampleL,3)/8.0) + (pow(inputSampleL,7)/4096.0));
+				tempSample = (inputSampleL * biquad_lpf_AL[2]) + biquad_lpf_AL[7];
+				biquad_lpf_AL[7] = (inputSampleL * biquad_lpf_AL[3]) - (tempSample * biquad_lpf_AL[5]) + biquad_lpf_AL[8];
+				biquad_lpf_AL[8] = (inputSampleL * biquad_lpf_AL[4]) - (tempSample * biquad_lpf_AL[6]);
+				inputSampleL = tempSample;
+
+				if (inputSampleL > 1.0) inputSampleL = 1.0;
+				if (inputSampleL < -1.0) inputSampleL = -1.0;
+				//inputSampleL = asin(inputSampleL);
+				inputSampleL += (pow(inputSampleL,3)/4.0)+(pow(inputSampleL,5)/8.0)+(pow(inputSampleL,7)/16.0)+(pow(inputSampleL,9)/32.0);
+
+				//inputSampleR = sin(inputSampleR);
+				inputSampleR += ((pow(inputSampleR,5)/128.0) + (pow(inputSampleR,9)/262144.0)) - ((pow(inputSampleR,3)/8.0) + (pow(inputSampleR,7)/4096.0));
+				tempSample = (inputSampleR * biquad_lpf_AR[2]) + biquad_lpf_AR[7];
+				biquad_lpf_AR[7] = (inputSampleR * biquad_lpf_AR[3]) - (tempSample * biquad_lpf_AR[5]) + biquad_lpf_AR[8];
+				biquad_lpf_AR[8] = (inputSampleR * biquad_lpf_AR[4]) - (tempSample * biquad_lpf_AR[6]);
+				inputSampleR = tempSample;
+
+				if (inputSampleR > 1.0) inputSampleR = 1.0;
+				if (inputSampleR < -1.0) inputSampleR = -1.0;
+				//inputSampleR = asin(inputSampleR);
+				inputSampleR += (pow(inputSampleR,3)/4.0)+(pow(inputSampleR,5)/8.0)+(pow(inputSampleR,7)/16.0)+(pow(inputSampleR,9)/32.0);
+			}
+			
+			// Tape
+			
+			drySampleL = inputSampleL;
+			drySampleR = inputSampleR;
+
 			iirMidRollerAL = (iirMidRollerAL * (1.0 - RollAmount)) + (inputSampleL * RollAmount);
 			iirMidRollerAR = (iirMidRollerAR * (1.0 - RollAmount)) + (inputSampleR * RollAmount);
 			HighsSampleL = inputSampleL - iirMidRollerAL;
@@ -280,6 +426,86 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
 			if (inputSampleR < -1.0) inputSampleR = -1.0;
 			inputSampleR = asin(inputSampleR);
 		} else {
+			// Interstage
+			
+			drySampleL = inputSampleL;
+			drySampleR = inputSampleR;
+
+			iirSampleBL = (iirSampleBL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleBL;
+			iirSampleDL = (iirSampleDL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleDL;
+			iirSampleFL = (iirSampleFL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleFL;
+			inputSampleL = drySampleL - inputSampleL;
+			//make highpass
+			if (inputSampleL - iirSampleBL > threshold) inputSampleL = iirSampleBL + threshold;
+			if (inputSampleL - iirSampleBL < -threshold) inputSampleL = iirSampleBL - threshold;
+			//slew limit against lowpassed reference point
+
+			iirSampleBR = (iirSampleBR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleBR;
+			iirSampleDR = (iirSampleDR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleDR;
+			iirSampleFR = (iirSampleFR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleFR;
+			inputSampleR = drySampleR - inputSampleR;
+			//make highpass
+			if (inputSampleR - iirSampleBR > threshold) inputSampleR = iirSampleBR + threshold;
+			if (inputSampleR - iirSampleBR < -threshold) inputSampleR = iirSampleBR - threshold;
+			//slew limit against lowpassed reference point
+
+			if(enableHPF) {
+				//inputSampleL = sin(inputSampleL);
+				inputSampleL += ((pow(inputSampleL,5)/128.0) + (pow(inputSampleL,9)/262144.0)) - ((pow(inputSampleL,3)/8.0) + (pow(inputSampleL,7)/4096.0));
+				tempSample = (inputSampleL * biquad_hpf_BL[2]) + biquad_hpf_BL[7];
+				biquad_hpf_BL[7] = (inputSampleL * biquad_hpf_BL[3]) - (tempSample * biquad_hpf_BL[5]) + biquad_hpf_BL[8];
+				biquad_hpf_BL[8] = (inputSampleL * biquad_hpf_BL[4]) - (tempSample * biquad_hpf_BL[6]);
+				inputSampleL = tempSample;
+
+				if (inputSampleL > 1.0) inputSampleL = 1.0;
+				if (inputSampleL < -1.0) inputSampleL = -1.0;
+				//inputSampleL = asin(inputSampleL);
+				inputSampleL += (pow(inputSampleL,3)/4.0)+(pow(inputSampleL,5)/8.0)+(pow(inputSampleL,7)/16.0)+(pow(inputSampleL,9)/32.0);
+
+				//inputSampleR = sin(inputSampleR);
+				inputSampleR += ((pow(inputSampleR,5)/128.0) + (pow(inputSampleR,9)/262144.0)) - ((pow(inputSampleR,3)/8.0) + (pow(inputSampleR,7)/4096.0));
+				tempSample = (inputSampleR * biquad_hpf_BR[2]) + biquad_hpf_BR[7];
+				biquad_hpf_BR[7] = (inputSampleR * biquad_hpf_BR[3]) - (tempSample * biquad_hpf_BR[5]) + biquad_hpf_BR[8];
+				biquad_hpf_BR[8] = (inputSampleR * biquad_hpf_BR[4]) - (tempSample * biquad_hpf_BR[6]);
+				inputSampleR = tempSample;
+
+				if (inputSampleR > 1.0) inputSampleR = 1.0;
+				if (inputSampleR < -1.0) inputSampleR = -1.0;
+				//inputSampleR = asin(inputSampleR);
+				inputSampleR += (pow(inputSampleR,3)/4.0)+(pow(inputSampleR,5)/8.0)+(pow(inputSampleR,7)/16.0)+(pow(inputSampleR,9)/32.0);
+			}
+
+			if(enableLPF) {
+				//inputSampleL = sin(inputSampleL);
+				inputSampleL += ((pow(inputSampleL,5)/128.0) + (pow(inputSampleL,9)/262144.0)) - ((pow(inputSampleL,3)/8.0) + (pow(inputSampleL,7)/4096.0));
+				tempSample = (inputSampleL * biquad_lpf_BL[2]) + biquad_lpf_BL[7];
+				biquad_lpf_BL[7] = (inputSampleL * biquad_lpf_BL[3]) - (tempSample * biquad_lpf_BL[5]) + biquad_lpf_BL[8];
+				biquad_lpf_BL[8] = (inputSampleL * biquad_lpf_BL[4]) - (tempSample * biquad_lpf_BL[6]);
+				inputSampleL = tempSample;
+
+				if (inputSampleL > 1.0) inputSampleL = 1.0;
+				if (inputSampleL < -1.0) inputSampleL = -1.0;
+				//inputSampleL = asin(inputSampleL);
+				inputSampleL += (pow(inputSampleL,3)/4.0)+(pow(inputSampleL,5)/8.0)+(pow(inputSampleL,7)/16.0)+(pow(inputSampleL,9)/32.0);
+
+				//inputSampleR = sin(inputSampleR);
+				inputSampleR += ((pow(inputSampleR,5)/128.0) + (pow(inputSampleR,9)/262144.0)) - ((pow(inputSampleR,3)/8.0) + (pow(inputSampleR,7)/4096.0));
+				tempSample = (inputSampleR * biquad_lpf_BR[2]) + biquad_lpf_BR[7];
+				biquad_lpf_BR[7] = (inputSampleR * biquad_lpf_BR[3]) - (tempSample * biquad_lpf_BR[5]) + biquad_lpf_BR[8];
+				biquad_lpf_BR[8] = (inputSampleR * biquad_lpf_BR[4]) - (tempSample * biquad_lpf_BR[6]);
+				inputSampleR = tempSample;
+
+				if (inputSampleR > 1.0) inputSampleR = 1.0;
+				if (inputSampleR < -1.0) inputSampleR = -1.0;
+				//inputSampleR = asin(inputSampleR);
+				inputSampleR += (pow(inputSampleR,3)/4.0)+(pow(inputSampleR,5)/8.0)+(pow(inputSampleR,7)/16.0)+(pow(inputSampleR,9)/32.0);
+			}
+			
+			// Tape
+			
+			drySampleL = inputSampleL;
+			drySampleR = inputSampleR;
+
 			iirMidRollerBL = (iirMidRollerBL * (1.0 - RollAmount)) + (inputSampleL * RollAmount);
 			iirMidRollerBR = (iirMidRollerBR * (1.0 - RollAmount)) + (inputSampleR * RollAmount);
 			HighsSampleL = inputSampleL - iirMidRollerBL;
@@ -329,6 +555,17 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
 			inputSampleR = asin(inputSampleR);
 		}
 		flip = !flip;
+
+		// Hypersonic
+
+		outSample = (inputSampleL * fixB[fix_a0]) + fixB[fix_sL1];
+		fixB[fix_sL1] = (inputSampleL * fixB[fix_a1]) - (outSample * fixB[fix_b1]) + fixB[fix_sL2];
+		fixB[fix_sL2] = (inputSampleL * fixB[fix_a2]) - (outSample * fixB[fix_b2]);
+		inputSampleL = outSample; //fixed biquad filtering ultrasonics
+		outSample = (inputSampleR * fixB[fix_a0]) + fixB[fix_sR1];
+		fixB[fix_sR1] = (inputSampleR * fixB[fix_a1]) - (outSample * fixB[fix_b1]) + fixB[fix_sR2];
+		fixB[fix_sR2] = (inputSampleR * fixB[fix_a2]) - (outSample * fixB[fix_b2]);
+		inputSampleR = outSample; //fixed biquad filtering ultrasonics
 
 		double groundSampleL = drySampleL - inputSampleL; //set up UnBox
 		double groundSampleR = drySampleR - inputSampleR; //set up UnBox
@@ -381,10 +618,16 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
 		inputSampleL += ((iirHeadBumpAL + iirHeadBumpBL) * bumpgain);//and head bump
 		inputSampleR += ((iirHeadBumpAR + iirHeadBumpBR) * bumpgain);//and head bump
 
-		// BitshiftGain
+		// Hypersonic
 
-		inputSampleL *= gain;
-		inputSampleR *= gain;
+		outSample = (inputSampleL * fixC[fix_a0]) + fixC[fix_sL1];
+		fixC[fix_sL1] = (inputSampleL * fixC[fix_a1]) - (outSample * fixC[fix_b1]) + fixC[fix_sL2];
+		fixC[fix_sL2] = (inputSampleL * fixC[fix_a2]) - (outSample * fixC[fix_b2]);
+		inputSampleL = outSample; //fixed biquad filtering ultrasonics
+		outSample = (inputSampleR * fixC[fix_a0]) + fixC[fix_sR1];
+		fixC[fix_sR1] = (inputSampleR * fixC[fix_a1]) - (outSample * fixC[fix_b1]) + fixC[fix_sR2];
+		fixC[fix_sR2] = (inputSampleR * fixC[fix_a2]) - (outSample * fixC[fix_b2]);
+		inputSampleR = outSample; //fixed biquad filtering ultrasonics
 
 		// uLawEncode
 
@@ -480,6 +723,22 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
 			if (inputSampleR < 0) inputSampleR = -(pow(256,fabs(inputSampleR))-1.0) / 255;
 		}
 
+		// BitshiftGain
+
+		inputSampleL *= trim_gain;
+		inputSampleR *= trim_gain;
+
+		// Hypersonic
+
+		outSample = (inputSampleL * fixD[fix_a0]) + fixD[fix_sL1];
+		fixD[fix_sL1] = (inputSampleL * fixD[fix_a1]) - (outSample * fixD[fix_b1]) + fixD[fix_sL2];
+		fixD[fix_sL2] = (inputSampleL * fixD[fix_a2]) - (outSample * fixD[fix_b2]);
+		inputSampleL = outSample; //fixed biquad filtering ultrasonics
+		outSample = (inputSampleR * fixD[fix_a0]) + fixD[fix_sR1];
+		fixD[fix_sR1] = (inputSampleR * fixD[fix_a1]) - (outSample * fixD[fix_b1]) + fixD[fix_sR2];
+		fixD[fix_sR2] = (inputSampleR * fixD[fix_a2]) - (outSample * fixD[fix_b2]);
+		inputSampleR = outSample; //fixed biquad filtering ultrasonics
+
 		// ToneSlant
 		
 		for (int count = ts_overallscale; count >= 0; count--) {
@@ -566,7 +825,19 @@ void ConsoleZTracking::processReplacing(float **inputs, float **outputs, VstInt3
 		if (inputSampleR < -0.5) inputSampleR = -0.5;
 		//final iron bar
 
+		// Hypersonic
+
+		outSample = (inputSampleL * fixE[fix_a0]) + fixE[fix_sL1];
+		fixE[fix_sL1] = (inputSampleL * fixE[fix_a1]) - (outSample * fixE[fix_b1]) + fixE[fix_sL2];
+		fixE[fix_sL2] = (inputSampleL * fixE[fix_a2]) - (outSample * fixE[fix_b2]);
+		inputSampleL = outSample; //fixed biquad filtering ultrasonics
+		outSample = (inputSampleR * fixE[fix_a0]) + fixE[fix_sR1];
+		fixE[fix_sR1] = (inputSampleR * fixE[fix_a1]) - (outSample * fixE[fix_b1]) + fixE[fix_sR2];
+		fixE[fix_sR2] = (inputSampleR * fixE[fix_a2]) - (outSample * fixE[fix_b2]);
+		inputSampleR = outSample; //fixed biquad filtering ultrasonics
+		
 		//begin 32 bit stereo floating point dither
+
 		int expon; frexpf((float)inputSampleL, &expon);
 		fpdL ^= fpdL << 13; fpdL ^= fpdL >> 17; fpdL ^= fpdL << 5;
 		inputSampleL += ((double(fpdL)-uint32_t(0x7fffffff)) * 5.5e-36l * pow(2,expon+62));
@@ -592,9 +863,9 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
   double* out1 = outputs[0];
   double* out2 = outputs[1];
 
-	bool enableUltrasonic = I > 0.0;
-	bool enableInterstage = J > 0.0;
-	bool enableuLaw = K > 0.0;
+	bool enableHPF = N > 0.0;
+	bool enableLPF = O > 0.0;
+	bool enableuLaw = P > 0.0;
 
 	double drySampleL;
 	double drySampleR;
@@ -603,66 +874,102 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 	overallscale /= 44100.0;
 	overallscale *= getSampleRate();
 
+	double KK;
+	double norm;
+
 	// BitshiftGain
 
-	int bitshiftGain = (A * 32)-16;
-	double gain = 1.0;
-	switch (bitshiftGain)
+	double input_gain = 1.0;
+	switch ((int)(A * 32)-16)
 	{
-		case -16: gain = 0.0000152587890625; break;
-		case -15: gain = 0.000030517578125; break;
-		case -14: gain = 0.00006103515625; break;
-		case -13: gain = 0.0001220703125; break;
-		case -12: gain = 0.000244140625; break;
-		case -11: gain = 0.00048828125; break;
-		case -10: gain = 0.0009765625; break;
-		case -9: gain = 0.001953125; break;
-		case -8: gain = 0.00390625; break;
-		case -7: gain = 0.0078125; break;
-		case -6: gain = 0.015625; break;
-		case -5: gain = 0.03125; break;
-		case -4: gain = 0.0625; break;
-		case -3: gain = 0.125; break;
-		case -2: gain = 0.25; break;
-		case -1: gain = 0.5; break;
-		case 0: gain = 1.0; break;
-		case 1: gain = 2.0; break;
-		case 2: gain = 4.0; break;
-		case 3: gain = 8.0; break;
-		case 4: gain = 16.0; break;
-		case 5: gain = 32.0; break;
-		case 6: gain = 64.0; break;
-		case 7: gain = 128.0; break;
-		case 8: gain = 256.0; break;
-		case 9: gain = 512.0; break;
-		case 10: gain = 1024.0; break;
-		case 11: gain = 2048.0; break;
-		case 12: gain = 4096.0; break;
-		case 13: gain = 8192.0; break;
-		case 14: gain = 16384.0; break;
-		case 15: gain = 32768.0; break;
-		case 16: gain = 65536.0; break;
+		case -16: input_gain = 0.0000152587890625; break;
+		case -15: input_gain = 0.000030517578125; break;
+		case -14: input_gain = 0.00006103515625; break;
+		case -13: input_gain = 0.0001220703125; break;
+		case -12: input_gain = 0.000244140625; break;
+		case -11: input_gain = 0.00048828125; break;
+		case -10: input_gain = 0.0009765625; break;
+		case -9: input_gain = 0.001953125; break;
+		case -8: input_gain = 0.00390625; break;
+		case -7: input_gain = 0.0078125; break;
+		case -6: input_gain = 0.015625; break;
+		case -5: input_gain = 0.03125; break;
+		case -4: input_gain = 0.0625; break;
+		case -3: input_gain = 0.125; break;
+		case -2: input_gain = 0.25; break;
+		case -1: input_gain = 0.5; break;
+		case 0: input_gain = 1.0; break;
+		case 1: input_gain = 2.0; break;
+		case 2: input_gain = 4.0; break;
+		case 3: input_gain = 8.0; break;
+		case 4: input_gain = 16.0; break;
+		case 5: input_gain = 32.0; break;
+		case 6: input_gain = 64.0; break;
+		case 7: input_gain = 128.0; break;
+		case 8: input_gain = 256.0; break;
+		case 9: input_gain = 512.0; break;
+		case 10: input_gain = 1024.0; break;
+		case 11: input_gain = 2048.0; break;
+		case 12: input_gain = 4096.0; break;
+		case 13: input_gain = 8192.0; break;
+		case 14: input_gain = 16384.0; break;
+		case 15: input_gain = 32768.0; break;
+		case 16: input_gain = 65536.0; break;
 	}
 	//we are directly punching in the gain values rather than calculating them
 
-	// UltrasonicLite
+	// Hypersonic
 
-	double KK;
-	double u_norm;
+	double cutoff = 25000.0 / getSampleRate();
+	if (cutoff > 0.45) cutoff = 0.45; //don't crash if run at 44.1k
 
-	if(enableUltrasonic) {
-		biquadA[0] = 24000.0 / getSampleRate();
-		if (getSampleRate() < 88000.0) biquadA[0] = 21000.0 / getSampleRate();
-	    biquadA[1] = 0.70710678;
+	fixE[fix_freq] = fixD[fix_freq] = fixC[fix_freq] = fixB[fix_freq] = fixA[fix_freq] = cutoff;
 
-		KK = tan(M_PI * biquadA[0]); //lowpass
-		u_norm = 1.0 / (1.0 + KK / biquadA[1] + KK * KK);
-		biquadA[2] = KK * KK * u_norm;
-		biquadA[3] = 2.0 * biquadA[2];
-		biquadA[4] = biquadA[2];
-		biquadA[5] = 2.0 * (KK * KK - 1.0) * u_norm;
-		biquadA[6] = (1.0 - KK / biquadA[1] + KK * KK) * u_norm;
-	}
+  fixA[fix_reso] = 4.46570214;
+	fixB[fix_reso] = 1.51387132;
+	fixC[fix_reso] = 0.93979296;
+	fixD[fix_reso] = 0.70710678;
+	fixE[fix_reso] = 0.59051105;
+
+	KK = tan(M_PI * fixA[fix_freq]); //lowpass
+	norm = 1.0 / (1.0 + KK / fixA[fix_reso] + KK * KK);
+	fixA[fix_a0] = KK * KK * norm;
+	fixA[fix_a1] = 2.0 * fixA[fix_a0];
+	fixA[fix_a2] = fixA[fix_a0];
+	fixA[fix_b1] = 2.0 * (KK * KK - 1.0) * norm;
+	fixA[fix_b2] = (1.0 - KK / fixA[fix_reso] + KK * KK) * norm;
+
+	KK = tan(M_PI * fixB[fix_freq]);
+	norm = 1.0 / (1.0 + KK / fixB[fix_reso] + KK * KK);
+	fixB[fix_a0] = KK * KK * norm;
+	fixB[fix_a1] = 2.0 * fixB[fix_a0];
+	fixB[fix_a2] = fixB[fix_a0];
+	fixB[fix_b1] = 2.0 * (KK * KK - 1.0) * norm;
+	fixB[fix_b2] = (1.0 - KK / fixB[fix_reso] + KK * KK) * norm;
+
+	KK = tan(M_PI * fixC[fix_freq]);
+	norm = 1.0 / (1.0 + KK / fixC[fix_reso] + KK * KK);
+	fixC[fix_a0] = KK * KK * norm;
+	fixC[fix_a1] = 2.0 * fixC[fix_a0];
+	fixC[fix_a2] = fixC[fix_a0];
+	fixC[fix_b1] = 2.0 * (KK * KK - 1.0) * norm;
+	fixC[fix_b2] = (1.0 - KK / fixC[fix_reso] + KK * KK) * norm;
+
+	KK = tan(M_PI * fixD[fix_freq]);
+	norm = 1.0 / (1.0 + KK / fixD[fix_reso] + KK * KK);
+	fixD[fix_a0] = KK * KK * norm;
+	fixD[fix_a1] = 2.0 * fixD[fix_a0];
+	fixD[fix_a2] = fixD[fix_a0];
+	fixD[fix_b1] = 2.0 * (KK * KK - 1.0) * norm;
+	fixD[fix_b2] = (1.0 - KK / fixD[fix_reso] + KK * KK) * norm;
+
+	KK = tan(M_PI * fixE[fix_freq]);
+	norm = 1.0 / (1.0 + KK / fixE[fix_reso] + KK * KK);
+	fixE[fix_a0] = KK * KK * norm;
+	fixE[fix_a1] = 2.0 * fixE[fix_a0];
+	fixE[fix_a2] = fixE[fix_a0];
+	fixE[fix_b1] = 2.0 * (KK * KK - 1.0) * norm;
+	fixE[fix_b2] = (1.0 - KK / fixE[fix_reso] + KK * KK) * norm;
 
 	// Interstage
 
@@ -670,10 +977,46 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 	double iirAmount = 0.00295 / overallscale;
 	double threshold = 0.381966011250105;
 
+	// BiquadOneHalf HPF
+
+	biquad_hpf_AL[0] = ((B*B*B*0.9999)+0.0001)*0.499;
+	if (biquad_hpf_AL[0] < 0.0001) biquad_hpf_AL[0] = 0.0001;
+	
+    biquad_hpf_AL[1] = (C*C*C*29.99)+0.01;
+	if (biquad_hpf_AL[1] < 0.0001) biquad_hpf_AL[1] = 0.0001;
+
+	KK = tan(M_PI * biquad_hpf_AL[0]);
+	norm = 1.0 / (1.0 + KK / biquad_hpf_AL[1] + KK * KK);
+	biquad_hpf_AL[2] = norm;
+	biquad_hpf_AL[3] = -2.0 * biquad_hpf_AL[2];
+	biquad_hpf_AL[4] = biquad_hpf_AL[2];
+	biquad_hpf_AL[5] = 2.0 * (KK * KK - 1.0) * norm;
+	biquad_hpf_AL[6] = (1.0 - KK / biquad_hpf_AL[1] + KK * KK) * norm;
+
+	for (int x = 0; x < 7; x++) {biquad_hpf_AR[x] = biquad_hpf_BL[x] = biquad_hpf_BR[x] = biquad_hpf_AL[x];}
+
+	// BiquadOneHalf LPF
+
+	biquad_lpf_AL[0] = ((D*D*D*0.9999)+0.0001)*0.499;
+	if (biquad_lpf_AL[0] < 0.0001) biquad_lpf_AL[0] = 0.0001;
+	
+    biquad_lpf_AL[1] = (E*E*E*29.99)+0.01;
+	if (biquad_lpf_AL[1] < 0.0001) biquad_lpf_AL[1] = 0.0001;
+
+	KK = tan(M_PI * biquad_lpf_AL[0]);
+	norm = 1.0 / (1.0 + KK / biquad_lpf_AL[1] + KK * KK);
+	biquad_lpf_AL[2] = KK * KK * norm;
+	biquad_lpf_AL[3] = 2.0 * biquad_lpf_AL[2];
+	biquad_lpf_AL[4] = biquad_lpf_AL[2];
+	biquad_lpf_AL[5] = 2.0 * (KK * KK - 1.0) * norm;
+	biquad_lpf_AL[6] = (1.0 - KK / biquad_lpf_AL[1] + KK * KK) * norm;
+
+	for (int x = 0; x < 7; x++) {biquad_lpf_AR[x] = biquad_lpf_BL[x] = biquad_lpf_BR[x] = biquad_lpf_AL[x];}
+
 	// Tape
 
-	double inputgain = pow(10.0,((D-0.5)*24.0)/20.0);
-	double bumpgain = E*0.1;
+	double inputgain = pow(10.0,((F-0.5)*24.0)/20.0);
+	double bumpgain = G*0.1;
 	double HeadBumpFreq = 0.12/overallscale;
 	double softness = 0.618033988749894848204586;
 	double RollAmount = (1.0 - softness) / overallscale;
@@ -681,33 +1024,73 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 	//[1] is resonance, 0.7071 is Butterworth. Also can't be zero
 	biquadAL[0] = biquadBL[0] = biquadAR[0] = biquadBR[0] = 0.0072/overallscale;
 	biquadAL[1] = biquadBL[1] = biquadAR[1] = biquadBR[1] = 0.0009;
-	double K = tan(M_PI * biquadBR[0]);
-	double norm = 1.0 / (1.0 + K / biquadBR[1] + K * K);
-	biquadAL[2] = biquadBL[2] = biquadAR[2] = biquadBR[2] = K / biquadBR[1] * norm;
+	KK = tan(M_PI * biquadBR[0]);
+	norm = 1.0 / (1.0 + KK / biquadBR[1] + KK * KK);
+	biquadAL[2] = biquadBL[2] = biquadAR[2] = biquadBR[2] = KK / biquadBR[1] * norm;
 	biquadAL[4] = biquadBL[4] = biquadAR[4] = biquadBR[4] = -biquadBR[2];
-	biquadAL[5] = biquadBL[5] = biquadAR[5] = biquadBR[5] = 2.0 * (K * K - 1.0) * norm;
-	biquadAL[6] = biquadBL[6] = biquadAR[6] = biquadBR[6] = (1.0 - K / biquadBR[1] + K * K) * norm;
+	biquadAL[5] = biquadBL[5] = biquadAR[5] = biquadBR[5] = 2.0 * (KK * KK - 1.0) * norm;
+	biquadAL[6] = biquadBL[6] = biquadAR[6] = biquadBR[6] = (1.0 - KK / biquadBR[1] + KK * KK) * norm;
 
 	biquadCL[0] = biquadDL[0] = biquadCR[0] = biquadDR[0] = 0.032/overallscale;
 	biquadCL[1] = biquadDL[1] = biquadCR[1] = biquadDR[1] = 0.0007;
-	K = tan(M_PI * biquadDR[0]);
-	norm = 1.0 / (1.0 + K / biquadDR[1] + K * K);
-	biquadCL[2] = biquadDL[2] = biquadCR[2] = biquadDR[2] = K / biquadDR[1] * norm;
+	KK = tan(M_PI * biquadDR[0]);
+	norm = 1.0 / (1.0 + KK / biquadDR[1] + KK * KK);
+	biquadCL[2] = biquadDL[2] = biquadCR[2] = biquadDR[2] = KK / biquadDR[1] * norm;
 	biquadCL[4] = biquadDL[4] = biquadCR[4] = biquadDR[4] = -biquadDR[2];
-	biquadCL[5] = biquadDL[5] = biquadCR[5] = biquadDR[5] = 2.0 * (K * K - 1.0) * norm;
-	biquadCL[6] = biquadDL[6] = biquadCR[6] = biquadDR[6] = (1.0 - K / biquadDR[1] + K * K) * norm;
+	biquadCL[5] = biquadDL[5] = biquadCR[5] = biquadDR[5] = 2.0 * (KK * KK - 1.0) * norm;
+	biquadCL[6] = biquadDL[6] = biquadCR[6] = biquadDR[6] = (1.0 - KK / biquadDR[1] + KK * KK) * norm;
+
+	// BitshiftGain
+
+	double trim_gain = 1.0;
+	switch ((int)(H * 32)-16)
+	{
+		case -16: trim_gain = 0.0000152587890625; break;
+		case -15: trim_gain = 0.000030517578125; break;
+		case -14: trim_gain = 0.00006103515625; break;
+		case -13: trim_gain = 0.0001220703125; break;
+		case -12: trim_gain = 0.000244140625; break;
+		case -11: trim_gain = 0.00048828125; break;
+		case -10: trim_gain = 0.0009765625; break;
+		case -9: trim_gain = 0.001953125; break;
+		case -8: trim_gain = 0.00390625; break;
+		case -7: trim_gain = 0.0078125; break;
+		case -6: trim_gain = 0.015625; break;
+		case -5: trim_gain = 0.03125; break;
+		case -4: trim_gain = 0.0625; break;
+		case -3: trim_gain = 0.125; break;
+		case -2: trim_gain = 0.25; break;
+		case -1: trim_gain = 0.5; break;
+		case 0: trim_gain = 1.0; break;
+		case 1: trim_gain = 2.0; break;
+		case 2: trim_gain = 4.0; break;
+		case 3: trim_gain = 8.0; break;
+		case 4: trim_gain = 16.0; break;
+		case 5: trim_gain = 32.0; break;
+		case 6: trim_gain = 64.0; break;
+		case 7: trim_gain = 128.0; break;
+		case 8: trim_gain = 256.0; break;
+		case 9: trim_gain = 512.0; break;
+		case 10: trim_gain = 1024.0; break;
+		case 11: trim_gain = 2048.0; break;
+		case 12: trim_gain = 4096.0; break;
+		case 13: trim_gain = 8192.0; break;
+		case 14: trim_gain = 16384.0; break;
+		case 15: trim_gain = 32768.0; break;
+		case 16: trim_gain = 65536.0; break;
+	}
+	//we are directly punching in the gain values rather than calculating them
 
 	// Creature
 
-	double source = 1.0-pow(1.0-D,5);
-	int stages = (pow(E,2)*32.0*sqrt(overallscale))+1;
-	double wet = (F*2.0)-1.0; //inv-dry-wet for highpass
-	double dry = 2.0-(F*2.0);
+	double source = 1.0-pow(1.0-I,5);
+	int stages = (pow(J,2)*32.0*sqrt(overallscale))+1;
+	double wet = (K*2.0)-1.0; //inv-dry-wet for highpass
+	double dry = 2.0-(K*2.0);
 	if (dry > 1.0) dry = 1.0; //full dry for use with inv, to 0.0 at full wet
 
 
 	// ToneSlant
-
 
 	double ts_inputSampleL;
 	double ts_inputSampleR;
@@ -717,8 +1100,8 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 	double ts_accumulatorSampleR;
 	double ts_drySampleL;
 	double ts_drySampleR;
-	double ts_overallscale = (G*99.0)+1.0;
-	double ts_applySlant = (H*2.0)-1.0;
+	double ts_overallscale = (L*99.0)+1.0;
+	double ts_applySlant = (M*2.0)-1.0;
 	
 	
 	ts_f[0] = 1.0 / ts_overallscale;
@@ -736,66 +1119,23 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
   while (--sampleFrames >= 0)
   {
 
-		double inputSampleL = *in1;
-		double inputSampleR = *in2;
+		double inputSampleL = *in1 * input_gain;
+		double inputSampleR = *in2 * input_gain;
+		double outSample;
 
 		if (fabs(inputSampleL)<1.18e-23) inputSampleL = fpdL * 1.18e-17;
 		if (fabs(inputSampleR)<1.18e-23) inputSampleR = fpdR * 1.18e-17;
 
-		// UltrasonicLite
+		// Hypersonic
 
-		if(enableUltrasonic) {
-			double outSampleL = biquadA[2]*inputSampleL+biquadA[3]*biquadA[7]+biquadA[4]*biquadA[8]-biquadA[5]*biquadA[9]-biquadA[6]*biquadA[10];
-			biquadA[8] = biquadA[7]; biquadA[7] = inputSampleL; inputSampleL = outSampleL; biquadA[10] = biquadA[9]; biquadA[9] = inputSampleL; //DF1 left
-
-			double outSampleR = biquadA[2]*inputSampleR+biquadA[3]*biquadA[11]+biquadA[4]*biquadA[12]-biquadA[5]*biquadA[13]-biquadA[6]*biquadA[14];
-			biquadA[12] = biquadA[11]; biquadA[11] = inputSampleR; inputSampleR = outSampleR; biquadA[14] = biquadA[13]; biquadA[13] = inputSampleR; //DF1 right
-		}
-
-		// Interstage
-
-		if(enableInterstage) {
-			drySampleL = inputSampleL;
-			drySampleR = inputSampleR;
-
-			if (flip) {
-				iirSampleAL = (iirSampleAL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleAL;
-				iirSampleCL = (iirSampleCL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleCL;
-				iirSampleEL = (iirSampleEL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleEL;
-				inputSampleL = drySampleL - inputSampleL;
-				//make highpass
-				if (inputSampleL - iirSampleAL > threshold) inputSampleL = iirSampleAL + threshold;
-				if (inputSampleL - iirSampleAL < -threshold) inputSampleL = iirSampleAL - threshold;
-				//slew limit against lowpassed reference point
-
-				iirSampleAR = (iirSampleAR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleAR;
-				iirSampleCR = (iirSampleCR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleCR;
-				iirSampleER = (iirSampleER * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleER;
-				inputSampleR = drySampleR - inputSampleR;
-				//make highpass
-				if (inputSampleR - iirSampleAR > threshold) inputSampleR = iirSampleAR + threshold;
-				if (inputSampleR - iirSampleAR < -threshold) inputSampleR = iirSampleAR - threshold;
-				//slew limit against lowpassed reference point
-			} else {
-				iirSampleBL = (iirSampleBL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleBL;
-				iirSampleDL = (iirSampleDL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleDL;
-				iirSampleFL = (iirSampleFL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleFL;
-				inputSampleL = drySampleL - inputSampleL;
-				//make highpass
-				if (inputSampleL - iirSampleBL > threshold) inputSampleL = iirSampleBL + threshold;
-				if (inputSampleL - iirSampleBL < -threshold) inputSampleL = iirSampleBL - threshold;
-				//slew limit against lowpassed reference point
-
-				iirSampleBR = (iirSampleBR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleBR;
-				iirSampleDR = (iirSampleDR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleDR;
-				iirSampleFR = (iirSampleFR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleFR;
-				inputSampleR = drySampleR - inputSampleR;
-				//make highpass
-				if (inputSampleR - iirSampleBR > threshold) inputSampleR = iirSampleBR + threshold;
-				if (inputSampleR - iirSampleBR < -threshold) inputSampleR = iirSampleBR - threshold;
-				//slew limit against lowpassed reference point
-			}
-		}
+		outSample = (inputSampleL * fixA[fix_a0]) + fixA[fix_sL1];
+		fixA[fix_sL1] = (inputSampleL * fixA[fix_a1]) - (outSample * fixA[fix_b1]) + fixA[fix_sL2];
+		fixA[fix_sL2] = (inputSampleL * fixA[fix_a2]) - (outSample * fixA[fix_b2]);
+		inputSampleL = outSample; //fixed biquad filtering ultrasonics
+		outSample = (inputSampleR * fixA[fix_a0]) + fixA[fix_sR1];
+		fixA[fix_sR1] = (inputSampleR * fixA[fix_a1]) - (outSample * fixA[fix_b1]) + fixA[fix_sR2];
+		fixA[fix_sR2] = (inputSampleR * fixA[fix_a2]) - (outSample * fixA[fix_b2]);
+		inputSampleR = outSample; //fixed biquad filtering ultrasonics
 
 		// Tape
 
@@ -810,6 +1150,80 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 
 		if (flip)
 		{
+			// Interstage
+			
+			iirSampleAL = (iirSampleAL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleAL;
+			iirSampleCL = (iirSampleCL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleCL;
+			iirSampleEL = (iirSampleEL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleEL;
+			inputSampleL = drySampleL - inputSampleL;
+			//make highpass
+			if (inputSampleL - iirSampleAL > threshold) inputSampleL = iirSampleAL + threshold;
+			if (inputSampleL - iirSampleAL < -threshold) inputSampleL = iirSampleAL - threshold;
+			//slew limit against lowpassed reference point
+
+			iirSampleAR = (iirSampleAR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleAR;
+			iirSampleCR = (iirSampleCR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleCR;
+			iirSampleER = (iirSampleER * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleER;
+			inputSampleR = drySampleR - inputSampleR;
+			//make highpass
+			if (inputSampleR - iirSampleAR > threshold) inputSampleR = iirSampleAR + threshold;
+			if (inputSampleR - iirSampleAR < -threshold) inputSampleR = iirSampleAR - threshold;
+			//slew limit against lowpassed reference point
+
+			if(enableHPF) {
+				//inputSampleL = sin(inputSampleL);
+				inputSampleL += ((pow(inputSampleL,5)/128.0) + (pow(inputSampleL,9)/262144.0)) - ((pow(inputSampleL,3)/8.0) + (pow(inputSampleL,7)/4096.0));
+				tempSample = (inputSampleL * biquad_hpf_AL[2]) + biquad_hpf_AL[7];
+				biquad_hpf_AL[7] = (inputSampleL * biquad_hpf_AL[3]) - (tempSample * biquad_hpf_AL[5]) + biquad_hpf_AL[8];
+				biquad_hpf_AL[8] = (inputSampleL * biquad_hpf_AL[4]) - (tempSample * biquad_hpf_AL[6]);
+				inputSampleL = tempSample;
+
+				if (inputSampleL > 1.0) inputSampleL = 1.0;
+				if (inputSampleL < -1.0) inputSampleL = -1.0;
+				//inputSampleL = asin(inputSampleL);
+				inputSampleL += (pow(inputSampleL,3)/4.0)+(pow(inputSampleL,5)/8.0)+(pow(inputSampleL,7)/16.0)+(pow(inputSampleL,9)/32.0);
+
+				//inputSampleR = sin(inputSampleR);
+				inputSampleR += ((pow(inputSampleR,5)/128.0) + (pow(inputSampleR,9)/262144.0)) - ((pow(inputSampleR,3)/8.0) + (pow(inputSampleR,7)/4096.0));
+				tempSample = (inputSampleR * biquad_hpf_AR[2]) + biquad_hpf_AR[7];
+				biquad_hpf_AR[7] = (inputSampleR * biquad_hpf_AR[3]) - (tempSample * biquad_hpf_AR[5]) + biquad_hpf_AR[8];
+				biquad_hpf_AR[8] = (inputSampleR * biquad_hpf_AR[4]) - (tempSample * biquad_hpf_AR[6]);
+				inputSampleR = tempSample;
+
+				if (inputSampleR > 1.0) inputSampleR = 1.0;
+				if (inputSampleR < -1.0) inputSampleR = -1.0;
+				//inputSampleR = asin(inputSampleR);
+				inputSampleR += (pow(inputSampleR,3)/4.0)+(pow(inputSampleR,5)/8.0)+(pow(inputSampleR,7)/16.0)+(pow(inputSampleR,9)/32.0);
+			}
+
+			if(enableLPF) {
+				//inputSampleL = sin(inputSampleL);
+				inputSampleL += ((pow(inputSampleL,5)/128.0) + (pow(inputSampleL,9)/262144.0)) - ((pow(inputSampleL,3)/8.0) + (pow(inputSampleL,7)/4096.0));
+				tempSample = (inputSampleL * biquad_lpf_AL[2]) + biquad_lpf_AL[7];
+				biquad_lpf_AL[7] = (inputSampleL * biquad_lpf_AL[3]) - (tempSample * biquad_lpf_AL[5]) + biquad_lpf_AL[8];
+				biquad_lpf_AL[8] = (inputSampleL * biquad_lpf_AL[4]) - (tempSample * biquad_lpf_AL[6]);
+				inputSampleL = tempSample;
+
+				if (inputSampleL > 1.0) inputSampleL = 1.0;
+				if (inputSampleL < -1.0) inputSampleL = -1.0;
+				//inputSampleL = asin(inputSampleL);
+				inputSampleL += (pow(inputSampleL,3)/4.0)+(pow(inputSampleL,5)/8.0)+(pow(inputSampleL,7)/16.0)+(pow(inputSampleL,9)/32.0);
+
+				//inputSampleR = sin(inputSampleR);
+				inputSampleR += ((pow(inputSampleR,5)/128.0) + (pow(inputSampleR,9)/262144.0)) - ((pow(inputSampleR,3)/8.0) + (pow(inputSampleR,7)/4096.0));
+				tempSample = (inputSampleR * biquad_lpf_AR[2]) + biquad_lpf_AR[7];
+				biquad_lpf_AR[7] = (inputSampleR * biquad_lpf_AR[3]) - (tempSample * biquad_lpf_AR[5]) + biquad_lpf_AR[8];
+				biquad_lpf_AR[8] = (inputSampleR * biquad_lpf_AR[4]) - (tempSample * biquad_lpf_AR[6]);
+				inputSampleR = tempSample;
+
+				if (inputSampleR > 1.0) inputSampleR = 1.0;
+				if (inputSampleR < -1.0) inputSampleR = -1.0;
+				//inputSampleR = asin(inputSampleR);
+				inputSampleR += (pow(inputSampleR,3)/4.0)+(pow(inputSampleR,5)/8.0)+(pow(inputSampleR,7)/16.0)+(pow(inputSampleR,9)/32.0);
+			}
+			
+			// Tape
+			
 			iirMidRollerAL = (iirMidRollerAL * (1.0 - RollAmount)) + (inputSampleL * RollAmount);
 			iirMidRollerAR = (iirMidRollerAR * (1.0 - RollAmount)) + (inputSampleR * RollAmount);
 			HighsSampleL = inputSampleL - iirMidRollerAL;
@@ -858,6 +1272,80 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 			if (inputSampleR < -1.0) inputSampleR = -1.0;
 			inputSampleR = asin(inputSampleR);
 		} else {
+			// Interstage
+			
+			iirSampleBL = (iirSampleBL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleBL;
+			iirSampleDL = (iirSampleDL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleDL;
+			iirSampleFL = (iirSampleFL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleFL;
+			inputSampleL = drySampleL - inputSampleL;
+			//make highpass
+			if (inputSampleL - iirSampleBL > threshold) inputSampleL = iirSampleBL + threshold;
+			if (inputSampleL - iirSampleBL < -threshold) inputSampleL = iirSampleBL - threshold;
+			//slew limit against lowpassed reference point
+
+			iirSampleBR = (iirSampleBR * (1 - firstStage)) + (inputSampleR * firstStage); inputSampleR = iirSampleBR;
+			iirSampleDR = (iirSampleDR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleDR;
+			iirSampleFR = (iirSampleFR * (1 - iirAmount)) + (inputSampleR * iirAmount); inputSampleR = iirSampleFR;
+			inputSampleR = drySampleR - inputSampleR;
+			//make highpass
+			if (inputSampleR - iirSampleBR > threshold) inputSampleR = iirSampleBR + threshold;
+			if (inputSampleR - iirSampleBR < -threshold) inputSampleR = iirSampleBR - threshold;
+			//slew limit against lowpassed reference point
+
+			if(enableHPF) {
+				//inputSampleL = sin(inputSampleL);
+				inputSampleL += ((pow(inputSampleL,5)/128.0) + (pow(inputSampleL,9)/262144.0)) - ((pow(inputSampleL,3)/8.0) + (pow(inputSampleL,7)/4096.0));
+				tempSample = (inputSampleL * biquad_hpf_BL[2]) + biquad_hpf_BL[7];
+				biquad_hpf_BL[7] = (inputSampleL * biquad_hpf_BL[3]) - (tempSample * biquad_hpf_BL[5]) + biquad_hpf_BL[8];
+				biquad_hpf_BL[8] = (inputSampleL * biquad_hpf_BL[4]) - (tempSample * biquad_hpf_BL[6]);
+				inputSampleL = tempSample;
+
+				if (inputSampleL > 1.0) inputSampleL = 1.0;
+				if (inputSampleL < -1.0) inputSampleL = -1.0;
+				//inputSampleL = asin(inputSampleL);
+				inputSampleL += (pow(inputSampleL,3)/4.0)+(pow(inputSampleL,5)/8.0)+(pow(inputSampleL,7)/16.0)+(pow(inputSampleL,9)/32.0);
+
+				//inputSampleR = sin(inputSampleR);
+				inputSampleR += ((pow(inputSampleR,5)/128.0) + (pow(inputSampleR,9)/262144.0)) - ((pow(inputSampleR,3)/8.0) + (pow(inputSampleR,7)/4096.0));
+				tempSample = (inputSampleR * biquad_hpf_BR[2]) + biquad_hpf_BR[7];
+				biquad_hpf_BR[7] = (inputSampleR * biquad_hpf_BR[3]) - (tempSample * biquad_hpf_BR[5]) + biquad_hpf_BR[8];
+				biquad_hpf_BR[8] = (inputSampleR * biquad_hpf_BR[4]) - (tempSample * biquad_hpf_BR[6]);
+				inputSampleR = tempSample;
+
+				if (inputSampleR > 1.0) inputSampleR = 1.0;
+				if (inputSampleR < -1.0) inputSampleR = -1.0;
+				//inputSampleR = asin(inputSampleR);
+				inputSampleR += (pow(inputSampleR,3)/4.0)+(pow(inputSampleR,5)/8.0)+(pow(inputSampleR,7)/16.0)+(pow(inputSampleR,9)/32.0);
+			}
+
+			if(enableLPF) {
+				//inputSampleL = sin(inputSampleL);
+				inputSampleL += ((pow(inputSampleL,5)/128.0) + (pow(inputSampleL,9)/262144.0)) - ((pow(inputSampleL,3)/8.0) + (pow(inputSampleL,7)/4096.0));
+				tempSample = (inputSampleL * biquad_lpf_BL[2]) + biquad_lpf_BL[7];
+				biquad_lpf_BL[7] = (inputSampleL * biquad_lpf_BL[3]) - (tempSample * biquad_lpf_BL[5]) + biquad_lpf_BL[8];
+				biquad_lpf_BL[8] = (inputSampleL * biquad_lpf_BL[4]) - (tempSample * biquad_lpf_BL[6]);
+				inputSampleL = tempSample;
+
+				if (inputSampleL > 1.0) inputSampleL = 1.0;
+				if (inputSampleL < -1.0) inputSampleL = -1.0;
+				//inputSampleL = asin(inputSampleL);
+				inputSampleL += (pow(inputSampleL,3)/4.0)+(pow(inputSampleL,5)/8.0)+(pow(inputSampleL,7)/16.0)+(pow(inputSampleL,9)/32.0);
+
+				//inputSampleR = sin(inputSampleR);
+				inputSampleR += ((pow(inputSampleR,5)/128.0) + (pow(inputSampleR,9)/262144.0)) - ((pow(inputSampleR,3)/8.0) + (pow(inputSampleR,7)/4096.0));
+				tempSample = (inputSampleR * biquad_lpf_BR[2]) + biquad_lpf_BR[7];
+				biquad_lpf_BR[7] = (inputSampleR * biquad_lpf_BR[3]) - (tempSample * biquad_lpf_BR[5]) + biquad_lpf_BR[8];
+				biquad_lpf_BR[8] = (inputSampleR * biquad_lpf_BR[4]) - (tempSample * biquad_lpf_BR[6]);
+				inputSampleR = tempSample;
+
+				if (inputSampleR > 1.0) inputSampleR = 1.0;
+				if (inputSampleR < -1.0) inputSampleR = -1.0;
+				//inputSampleR = asin(inputSampleR);
+				inputSampleR += (pow(inputSampleR,3)/4.0)+(pow(inputSampleR,5)/8.0)+(pow(inputSampleR,7)/16.0)+(pow(inputSampleR,9)/32.0);
+			}
+			
+			// Tape
+			
 			iirMidRollerBL = (iirMidRollerBL * (1.0 - RollAmount)) + (inputSampleL * RollAmount);
 			iirMidRollerBR = (iirMidRollerBR * (1.0 - RollAmount)) + (inputSampleR * RollAmount);
 			HighsSampleL = inputSampleL - iirMidRollerBL;
@@ -907,6 +1395,17 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 			inputSampleR = asin(inputSampleR);
 		}
 		flip = !flip;
+
+		// Hypersonic
+
+		outSample = (inputSampleL * fixB[fix_a0]) + fixB[fix_sL1];
+		fixB[fix_sL1] = (inputSampleL * fixB[fix_a1]) - (outSample * fixB[fix_b1]) + fixB[fix_sL2];
+		fixB[fix_sL2] = (inputSampleL * fixB[fix_a2]) - (outSample * fixB[fix_b2]);
+		inputSampleL = outSample; //fixed biquad filtering ultrasonics
+		outSample = (inputSampleR * fixB[fix_a0]) + fixB[fix_sR1];
+		fixB[fix_sR1] = (inputSampleR * fixB[fix_a1]) - (outSample * fixB[fix_b1]) + fixB[fix_sR2];
+		fixB[fix_sR2] = (inputSampleR * fixB[fix_a2]) - (outSample * fixB[fix_b2]);
+		inputSampleR = outSample; //fixed biquad filtering ultrasonics
 
 		double groundSampleL = drySampleL - inputSampleL; //set up UnBox
 		double groundSampleR = drySampleR - inputSampleR; //set up UnBox
@@ -959,10 +1458,16 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 		inputSampleL += ((iirHeadBumpAL + iirHeadBumpBL) * bumpgain);//and head bump
 		inputSampleR += ((iirHeadBumpAR + iirHeadBumpBR) * bumpgain);//and head bump
 
-		// BitshiftGain
+		// Hypersonic
 
-		inputSampleL *= gain;
-		inputSampleR *= gain;
+		outSample = (inputSampleL * fixC[fix_a0]) + fixC[fix_sL1];
+		fixC[fix_sL1] = (inputSampleL * fixC[fix_a1]) - (outSample * fixC[fix_b1]) + fixC[fix_sL2];
+		fixC[fix_sL2] = (inputSampleL * fixC[fix_a2]) - (outSample * fixC[fix_b2]);
+		inputSampleL = outSample; //fixed biquad filtering ultrasonics
+		outSample = (inputSampleR * fixC[fix_a0]) + fixC[fix_sR1];
+		fixC[fix_sR1] = (inputSampleR * fixC[fix_a1]) - (outSample * fixC[fix_b1]) + fixC[fix_sR2];
+		fixC[fix_sR2] = (inputSampleR * fixC[fix_a2]) - (outSample * fixC[fix_b2]);
+		inputSampleR = outSample; //fixed biquad filtering ultrasonics
 
 		// uLawEncode
 
@@ -1058,6 +1563,22 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 			if (inputSampleR < 0) inputSampleR = -(pow(256,fabs(inputSampleR))-1.0) / 255;
 		}
 
+		// BitshiftGain
+
+		inputSampleL *= trim_gain;
+		inputSampleR *= trim_gain;
+
+		// Hypersonic
+
+		outSample = (inputSampleL * fixD[fix_a0]) + fixD[fix_sL1];
+		fixD[fix_sL1] = (inputSampleL * fixD[fix_a1]) - (outSample * fixD[fix_b1]) + fixD[fix_sL2];
+		fixD[fix_sL2] = (inputSampleL * fixD[fix_a2]) - (outSample * fixD[fix_b2]);
+		inputSampleL = outSample; //fixed biquad filtering ultrasonics
+		outSample = (inputSampleR * fixD[fix_a0]) + fixD[fix_sR1];
+		fixD[fix_sR1] = (inputSampleR * fixD[fix_a1]) - (outSample * fixD[fix_b1]) + fixD[fix_sR2];
+		fixD[fix_sR2] = (inputSampleR * fixD[fix_a2]) - (outSample * fixD[fix_b2]);
+		inputSampleR = outSample; //fixed biquad filtering ultrasonics
+
 		// ToneSlant
 		
 		for (int count = ts_overallscale; count >= 0; count--) {
@@ -1144,7 +1665,17 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 		if (inputSampleR < -0.5) inputSampleR = -0.5;
 		//final iron bar
 
-		//begin 64 bit stereo floating point dither
+		// Hypersonic
+
+		outSample = (inputSampleL * fixE[fix_a0]) + fixE[fix_sL1];
+		fixE[fix_sL1] = (inputSampleL * fixE[fix_a1]) - (outSample * fixE[fix_b1]) + fixE[fix_sL2];
+		fixE[fix_sL2] = (inputSampleL * fixE[fix_a2]) - (outSample * fixE[fix_b2]);
+		inputSampleL = outSample; //fixed biquad filtering ultrasonics
+		outSample = (inputSampleR * fixE[fix_a0]) + fixE[fix_sR1];
+		fixE[fix_sR1] = (inputSampleR * fixE[fix_a1]) - (outSample * fixE[fix_b1]) + fixE[fix_sR2];
+		fixE[fix_sR2] = (inputSampleR * fixE[fix_a2]) - (outSample * fixE[fix_b2]);
+		inputSampleR = outSample; //fixed biquad filtering ultrasonics
+			//begin 64 bit stereo floating point dither
 		//int expon; frexp((double)inputSampleL, &expon);
 		fpdL ^= fpdL << 13; fpdL ^= fpdL >> 17; fpdL ^= fpdL << 5;
 		//inputSampleL += ((double(fpdL)-uint32_t(0x7fffffff)) * 1.1e-44l * pow(2,expon+62));

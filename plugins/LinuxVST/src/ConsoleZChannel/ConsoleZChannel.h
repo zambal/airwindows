@@ -70,9 +70,25 @@ private:
 	uint32_t fpdR;
 	//default stuff
 
-  // UltrasonicLite
+  // Hypersonic
 
-  double biquadA[15];
+	enum {
+		fix_freq,
+		fix_reso,
+		fix_a0,
+		fix_a1,
+		fix_a2,
+		fix_b1,
+		fix_b2,
+		fix_sL1,
+		fix_sL2,
+		fix_sR1,
+		fix_sR2,
+		fix_total
+	}; //fixed frequency biquad filter for ultrasonics, stereo
+
+	double fixF[fix_total];
+	double fixG[fix_total];
 
   // Desk4
 

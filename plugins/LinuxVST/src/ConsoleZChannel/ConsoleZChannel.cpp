@@ -12,9 +12,12 @@ AudioEffect* createEffectInstance(audioMasterCallback audioMaster) {return new C
 ConsoleZChannel::ConsoleZChannel(audioMasterCallback audioMaster) :
     AudioEffectX(audioMaster, kNumPrograms, kNumParameters)
 {
-  // UltrasonicLite
+  // Hypersonic
 
-  for (int x = 0; x < 15; x++) {biquadA[x] = 0.0;}
+	for (int x = 0; x < fix_total; x++) {
+		fixF[x] = 0.0;
+		fixG[x] = 0.0;
+	}
 
   // Desk 4
 

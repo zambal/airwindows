@@ -13,20 +13,31 @@ ConsoleZTracking::ConsoleZTracking(audioMasterCallback audioMaster) :
     AudioEffectX(audioMaster, kNumPrograms, kNumParameters)
 {
 	A = 0.5;
-	B = 0.5;
-	C = 0.5;
+	B = 0.0;
+	C = 0.0;
 	D = 0.0;
 	E = 0.0;
 	F = 0.5;
-	G = 0.0;
+	G = 0.5;
 	H = 0.5;
 	I = 0.0;
 	J = 0.0;
-	K = 0.0;
+	K = 0.5;
+	L = 0.0;
+	M = 0.5;
+	N = 0.0;
+	O = 0.0;
+	P = 0.0;
 
-  // UltrasonicLite
+  // Hypersonic
 
-  for (int x = 0; x < 15; x++) {biquadA[x] = 0.0;}
+	for (int x = 0; x < fix_total; x++) {
+		fixA[x] = 0.0;
+		fixB[x] = 0.0;
+		fixC[x] = 0.0;
+		fixD[x] = 0.0;
+		fixE[x] = 0.0;
+	}
 
   // Interstage
 
@@ -36,15 +47,21 @@ ConsoleZTracking::ConsoleZTracking(audioMasterCallback audioMaster) :
 	iirSampleDL = 0.0;
 	iirSampleEL = 0.0;
 	iirSampleFL = 0.0;
-	lastSampleL = 0.0;
 	iirSampleAR = 0.0;
 	iirSampleBR = 0.0;
 	iirSampleCR = 0.0;
 	iirSampleDR = 0.0;
 	iirSampleER = 0.0;
 	iirSampleFR = 0.0;
-	lastSampleR = 0.0;
 
+  // BiquadOneHalf HPF
+
+	for (int x = 0; x < 9; x++) {biquad_hpf_AL[x] = 0.0; biquad_hpf_AR[x] = 0.0; biquad_hpf_BL[x] = 0.0; biquad_hpf_BR[x] = 0.0;}
+  
+  // BiquadOneHalf LPF
+
+	for (int x = 0; x < 9; x++) {biquad_lpf_AL[x] = 0.0; biquad_lpf_AR[x] = 0.0; biquad_lpf_BL[x] = 0.0; biquad_lpf_BR[x] = 0.0;}
+  
   // Tape
 
 	iirMidRollerAL = 0.0;
@@ -118,7 +135,12 @@ VstInt32 ConsoleZTracking::getChunk (void** data, bool isPreset)
 	chunkData[7] = H;
 	chunkData[8] = I;
 	chunkData[9] = J;
-	chunkData[10] = K;
+  chunkData[10] = K;
+	chunkData[11] = L;
+	chunkData[12] = M;
+	chunkData[13] = N;
+  chunkData[14] = O;
+  chunkData[15] = P;
 	/* Note: The way this is set up, it will break if you manage to save settings on an Intel
 	 machine and load them on a PPC Mac. However, it's fine if you stick to the machine you
 	 started with. */
@@ -141,6 +163,11 @@ VstInt32 ConsoleZTracking::setChunk (void* data, VstInt32 byteSize, bool isPrese
 	I = pinParameter(chunkData[8]);
 	J = pinParameter(chunkData[9]);
 	K = pinParameter(chunkData[10]);
+	L = pinParameter(chunkData[11]);
+	M = pinParameter(chunkData[12]);
+	N = pinParameter(chunkData[13]);
+	O = pinParameter(chunkData[14]);
+	P = pinParameter(chunkData[15]);
 	/* We're ignoring byteSize as we found it to be a filthy liar */
 
 	/* calculate any other fields you need here - you could copy in
@@ -161,6 +188,11 @@ void ConsoleZTracking::setParameter(VstInt32 index, float value) {
         case kParamI: I = value; break;
         case kParamJ: J = value; break;
         case kParamK: K = value; break;
+        case kParamL: L = value; break;
+        case kParamM: M = value; break;
+        case kParamN: N = value; break;
+        case kParamO: O = value; break;
+        case kParamP: P = value; break;
         default: throw; // unknown parameter, shouldn't happen!
     }
 }
@@ -178,57 +210,77 @@ float ConsoleZTracking::getParameter(VstInt32 index) {
         case kParamI: return I; break;
         case kParamJ: return J; break;
         case kParamK: return K; break;
+        case kParamL: return L; break;
+        case kParamM: return M; break;
+        case kParamN: return N; break;
+        case kParamO: return O; break;
+        case kParamP: return P; break;
         default: break; // unknown parameter, shouldn't happen!
     } return 0.0; //we only need to update the relevant name, this is simple to manage
 }
 
 void ConsoleZTracking::getParameterName(VstInt32 index, char *text) {
     switch (index) {
-        case kParamA: vst_strncpy (text, "Slam", kVstMaxParamStrLen); break;
-        case kParamB: vst_strncpy (text, "Bump", kVstMaxParamStrLen); break;
-        case kParamC: vst_strncpy (text, "Gain", kVstMaxParamStrLen); break;
-        case kParamD: vst_strncpy (text, "Drive", kVstMaxParamStrLen); break;
-    		case kParamE: vst_strncpy (text, "Depth", kVstMaxParamStrLen); break;
-    		case kParamF: vst_strncpy (text, "Inv/Wet", kVstMaxParamStrLen); break;
-        case kParamG: vst_strncpy (text, "Voicing", kVstMaxParamStrLen); break;
-    		case kParamH: vst_strncpy (text, "Highs", kVstMaxParamStrLen); break;
-        case kParamI: vst_strncpy (text, "Ultrasonics", kVstMaxParamStrLen); break;
-        case kParamJ: vst_strncpy (text, "Interstage", kVstMaxParamStrLen); break;
-        case kParamK: vst_strncpy (text, "uLaw", kVstMaxParamStrLen); break;
+        case kParamA: vst_strncpy (text, "Input", kVstMaxParamStrLen); break;
+    		case kParamB: vst_strncpy (text, "HPF Freq", kVstMaxParamStrLen); break;
+    		case kParamC: vst_strncpy (text, "HPF Q", kVstMaxParamStrLen); break;
+    		case kParamD: vst_strncpy (text, "LPF Freq", kVstMaxParamStrLen); break;
+    		case kParamE: vst_strncpy (text, "LPF Q", kVstMaxParamStrLen); break;
+        case kParamF: vst_strncpy (text, "Slam", kVstMaxParamStrLen); break;
+        case kParamG: vst_strncpy (text, "Bump", kVstMaxParamStrLen); break;
+        case kParamH: vst_strncpy (text, "Trim", kVstMaxParamStrLen); break;
+        case kParamI: vst_strncpy (text, "Drive", kVstMaxParamStrLen); break;
+    		case kParamJ: vst_strncpy (text, "Depth", kVstMaxParamStrLen); break;
+    		case kParamK: vst_strncpy (text, "Inv/Wet", kVstMaxParamStrLen); break;
+        case kParamL: vst_strncpy (text, "Voicing", kVstMaxParamStrLen); break;
+    		case kParamM: vst_strncpy (text, "Highs", kVstMaxParamStrLen); break;
+        case kParamN: vst_strncpy (text, "HPF", kVstMaxParamStrLen); break;
+        case kParamO: vst_strncpy (text, "LPF", kVstMaxParamStrLen); break;
+        case kParamP: vst_strncpy (text, "uLaw", kVstMaxParamStrLen); break;
         default: break; // unknown parameter, shouldn't happen!
     } //this is our labels for displaying in the VST host
 }
 
 void ConsoleZTracking::getParameterDisplay(VstInt32 index, char *text) {
     switch (index) {
-        case kParamA: float2string ((A-0.5)*24.0, text, kVstMaxParamStrLen); break;
-        case kParamB: float2string (B, text, kVstMaxParamStrLen); break;
-        case kParamC: int2string ((VstInt32)((C * 32)-16), text, kVstMaxParamStrLen); break;
-        case kParamD: float2string (D, text, kVstMaxParamStrLen); break;
-        case kParamE: float2string (E, text, kVstMaxParamStrLen); break;
-        case kParamF: float2string (F, text, kVstMaxParamStrLen); break;
-        case kParamG: float2string ((G*99.0)+1.0, text, kVstMaxParamStrLen); break;
-        case kParamH: float2string ((H*2.0)-1.0, text, kVstMaxParamStrLen); break;
-        case kParamI: if(I == 0.0) {vst_strncpy (text, "Off", kVstMaxParamStrLen);} else {vst_strncpy (text, "On", kVstMaxParamStrLen);} break;
-        case kParamJ: if(J == 0.0) {vst_strncpy (text, "Off", kVstMaxParamStrLen);} else {vst_strncpy (text, "On", kVstMaxParamStrLen);} break;
-        case kParamK: if(K == 0.0) {vst_strncpy (text, "Off", kVstMaxParamStrLen);} else {vst_strncpy (text, "On", kVstMaxParamStrLen);} break;
+        case kParamA: int2string ((VstInt32)((A * 32)-16), text, kVstMaxParamStrLen); break;
+        case kParamB: float2string ((B*B*B*0.9999)+0.0001, text, kVstMaxParamStrLen); break;
+        case kParamC: float2string ((C*C*C*29.99)+0.01, text, kVstMaxParamStrLen); break;
+        case kParamD: float2string ((D*D*D*0.9999)+0.0001, text, kVstMaxParamStrLen); break;
+        case kParamE: float2string ((E*E*E*29.99)+0.01, text, kVstMaxParamStrLen); break;
+        case kParamF: float2string ((F-0.5)*24.0, text, kVstMaxParamStrLen); break;
+        case kParamG: float2string (G, text, kVstMaxParamStrLen); break;
+        case kParamH: int2string ((VstInt32)((H * 32)-16), text, kVstMaxParamStrLen); break;
+        case kParamI: float2string (I, text, kVstMaxParamStrLen); break;
+        case kParamJ: float2string (J, text, kVstMaxParamStrLen); break;
+        case kParamK: float2string (K, text, kVstMaxParamStrLen); break;
+        case kParamL: float2string ((L*99.0)+1.0, text, kVstMaxParamStrLen); break;
+        case kParamM: float2string ((M*2.0)-1.0, text, kVstMaxParamStrLen); break;
+        case kParamN: if(N == 0.0) {vst_strncpy (text, "Off", kVstMaxParamStrLen);} else {vst_strncpy (text, "On", kVstMaxParamStrLen);} break;
+        case kParamO: if(O == 0.0) {vst_strncpy (text, "Off", kVstMaxParamStrLen);} else {vst_strncpy (text, "On", kVstMaxParamStrLen);} break;
+        case kParamP: if(P == 0.0) {vst_strncpy (text, "Off", kVstMaxParamStrLen);} else {vst_strncpy (text, "On", kVstMaxParamStrLen);} break;
         default: break; // unknown parameter, shouldn't happen!
 	} //this displays the values and handles 'popups' where it's discrete choices
 }
 
 void ConsoleZTracking::getParameterLabel(VstInt32 index, char *text) {
     switch (index) {
-        case kParamA: vst_strncpy (text, "dB", kVstMaxParamStrLen); break;
+        case kParamA: vst_strncpy (text, "bits", kVstMaxParamStrLen); break;
         case kParamB: vst_strncpy (text, "", kVstMaxParamStrLen); break;
-        case kParamC: vst_strncpy (text, "bits", kVstMaxParamStrLen); break;
+        case kParamC: vst_strncpy (text, "", kVstMaxParamStrLen); break;
         case kParamD: vst_strncpy (text, "", kVstMaxParamStrLen); break;
         case kParamE: vst_strncpy (text, "", kVstMaxParamStrLen); break;
-        case kParamF: vst_strncpy (text, "", kVstMaxParamStrLen); break;
-        case kParamG: vst_strncpy (text, "taps", kVstMaxParamStrLen); break;
-        case kParamH: vst_strncpy (text, " ", kVstMaxParamStrLen); break; //the percent
+        case kParamF: vst_strncpy (text, "dB", kVstMaxParamStrLen); break;
+        case kParamG: vst_strncpy (text, "", kVstMaxParamStrLen); break;
+        case kParamH: vst_strncpy (text, "bits", kVstMaxParamStrLen); break;
         case kParamI: vst_strncpy (text, "", kVstMaxParamStrLen); break;
         case kParamJ: vst_strncpy (text, "", kVstMaxParamStrLen); break;
         case kParamK: vst_strncpy (text, "", kVstMaxParamStrLen); break;
+        case kParamL: vst_strncpy (text, "taps", kVstMaxParamStrLen); break;
+        case kParamM: vst_strncpy (text, " ", kVstMaxParamStrLen); break; //the percent
+        case kParamN: vst_strncpy (text, "", kVstMaxParamStrLen); break;
+        case kParamO: vst_strncpy (text, "", kVstMaxParamStrLen); break;
+        case kParamP: vst_strncpy (text, "", kVstMaxParamStrLen); break;
 		default: break; // unknown parameter, shouldn't happen!
     }
 }
