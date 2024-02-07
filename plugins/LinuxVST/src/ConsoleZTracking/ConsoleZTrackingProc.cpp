@@ -1139,9 +1139,6 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 
 		// Tape
 
-		drySampleL = inputSampleL;
-		drySampleR = inputSampleR;
-
 		double HighsSampleL = 0.0;
 		double HighsSampleR = 0.0;
 		double NonHighsSampleL = 0.0;
@@ -1152,6 +1149,9 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 		{
 			// Interstage
 			
+			drySampleL = inputSampleL;
+			drySampleR = inputSampleR;
+
 			iirSampleAL = (iirSampleAL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleAL;
 			iirSampleCL = (iirSampleCL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleCL;
 			iirSampleEL = (iirSampleEL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleEL;
@@ -1224,6 +1224,9 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 			
 			// Tape
 			
+			drySampleL = inputSampleL;
+			drySampleR = inputSampleR;
+
 			iirMidRollerAL = (iirMidRollerAL * (1.0 - RollAmount)) + (inputSampleL * RollAmount);
 			iirMidRollerAR = (iirMidRollerAR * (1.0 - RollAmount)) + (inputSampleR * RollAmount);
 			HighsSampleL = inputSampleL - iirMidRollerAL;
@@ -1274,6 +1277,9 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 		} else {
 			// Interstage
 			
+			drySampleL = inputSampleL;
+			drySampleR = inputSampleR;
+
 			iirSampleBL = (iirSampleBL * (1 - firstStage)) + (inputSampleL * firstStage); inputSampleL = iirSampleBL;
 			iirSampleDL = (iirSampleDL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleDL;
 			iirSampleFL = (iirSampleFL * (1 - iirAmount)) + (inputSampleL * iirAmount); inputSampleL = iirSampleFL;
@@ -1346,6 +1352,9 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 			
 			// Tape
 			
+			drySampleL = inputSampleL;
+			drySampleR = inputSampleR;
+
 			iirMidRollerBL = (iirMidRollerBL * (1.0 - RollAmount)) + (inputSampleL * RollAmount);
 			iirMidRollerBR = (iirMidRollerBR * (1.0 - RollAmount)) + (inputSampleR * RollAmount);
 			HighsSampleL = inputSampleL - iirMidRollerBL;
@@ -1675,7 +1684,8 @@ void ConsoleZTracking::processDoubleReplacing(double **inputs, double **outputs,
 		fixE[fix_sR1] = (inputSampleR * fixE[fix_a1]) - (outSample * fixE[fix_b1]) + fixE[fix_sR2];
 		fixE[fix_sR2] = (inputSampleR * fixE[fix_a2]) - (outSample * fixE[fix_b2]);
 		inputSampleR = outSample; //fixed biquad filtering ultrasonics
-			//begin 64 bit stereo floating point dither
+
+		//begin 64 bit stereo floating point dither
 		//int expon; frexp((double)inputSampleL, &expon);
 		fpdL ^= fpdL << 13; fpdL ^= fpdL >> 17; fpdL ^= fpdL << 5;
 		//inputSampleL += ((double(fpdL)-uint32_t(0x7fffffff)) * 1.1e-44l * pow(2,expon+62));
