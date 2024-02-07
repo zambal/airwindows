@@ -220,6 +220,22 @@ void ConsoleZChannel::processReplacing(float **inputs, float **outputs, VstInt32
 	if (inputgain > 1.0) engageComp = true;
 	//end ButterComp
 
+	// Wider
+
+	double mid;
+	double side;
+	double densityside = (P*2.0)-1.0;
+	double densitymid = (Q*2.0)-1.0;
+	//removed extra dry variable
+	double offset = (densityside-densitymid)/2;
+	if (offset > 0) offset = sin(offset);
+	if (offset < 0) offset = -sin(-offset);
+	offset = -(pow(offset,4) * 20 * overallscale);
+	int near = (int)floor(fabs(offset));
+	double farLevel = fabs(offset) - near;
+	int far = near + 1;
+	double nearLevel = 1.0 - farLevel;
+	
 
     while (--sampleFrames >= 0)
     {
@@ -706,6 +722,64 @@ void ConsoleZChannel::processReplacing(float **inputs, float **outputs, VstInt32
 		inputSampleL = (midMPeakL*amountMPeak)+((1.5-amountMPeak>1.0)?inputSampleL:inputSampleL*(1.5-amountMPeak));
 		inputSampleR = (midMPeakR*amountMPeak)+((1.5-amountMPeak>1.0)?inputSampleR:inputSampleR*(1.5-amountMPeak));
 		//end ResEQ2 Mid Boost
+
+		// Wider
+
+		if(densityside != 0.0 || densitymid != 0.0) {
+			drySampleL = inputSampleL;
+			drySampleR = inputSampleR;
+			//assign working variables		
+			mid = inputSampleL + inputSampleR;
+			side = inputSampleL - inputSampleR;
+			//assign mid and side. Now, High Impact code
+		
+			if (densityside != 0.0)
+			{
+				outSample = fabs(densityside);
+				bridgerectifier = fabs(side)*1.57079633;
+				if (bridgerectifier > 1.57079633) bridgerectifier = 1.57079633;
+				//max value for sine function
+				if (densityside > 0) bridgerectifier = sin(bridgerectifier);
+				else bridgerectifier = 1-cos(bridgerectifier);
+				//produce either boosted or starved version
+				if (side > 0) side = (side*(1-outSample))+(bridgerectifier*outSample);
+				else side = (side*(1-outSample))-(bridgerectifier*outSample);
+				//blend according to density control
+			}
+		
+			if (densitymid != 0.0)
+			{
+				outSample = fabs(densitymid);
+				bridgerectifier = fabs(mid)*1.57079633;
+				if (bridgerectifier > 1.57079633) bridgerectifier = 1.57079633;
+				//max value for sine function
+				if (densitymid > 0) bridgerectifier = sin(bridgerectifier);
+				else bridgerectifier = 1-cos(bridgerectifier);
+				//produce either boosted or starved version
+				if (mid > 0) mid = (mid*(1-outSample))+(bridgerectifier*outSample);
+				else mid = (mid*(1-outSample))-(bridgerectifier*outSample);
+				//blend according to density control
+			}
+		
+			if (count < 1 || count > 2048) {count = 2048;}
+			if (offset > 0)
+			{
+				p[count+2048] = p[count] = mid;
+				mid = p[count+near]*nearLevel;
+				mid += p[count+far]*farLevel;
+			}
+		
+			if (offset < 0)
+			{
+				p[count+2048] = p[count] = side;
+				side = p[count+near]*nearLevel;
+				side += p[count+far]*farLevel;
+			}
+			count -= 1;
+		
+			inputSampleL = (mid+side) * 0.5;
+			inputSampleR = (mid-side) * 0.5;
+		}
 
 		//begin SubTight section
 		double subSampleL = inputSampleL * subTrim;

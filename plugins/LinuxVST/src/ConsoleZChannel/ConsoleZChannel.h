@@ -31,7 +31,9 @@ enum {
 	kParamM = 12,
 	kParamN = 13,
 	kParamO = 14,
-  kNumParameters = 15
+	kParamP = 15,
+	kParamQ = 16,
+  kNumParameters = 17
 }; //
 
 const int kNumPrograms = 0;
@@ -161,23 +163,29 @@ private:
 	bool flip;
 	//end ButterComp
 
+  // Wider
 
+	double p[4099];
+	int count;
+  
 
-    float A;
-    float B;
-    float C;
-    float D;
-    float E;
-    float F;
-    float G;
-    float H;
-    float I;
-    float J;
-    float K;
-    float L;
-    float M;
-    float N;
-    float O; //parameters. Always 0-1, and we scale/alter them elsewhere.
+  float A;
+  float B;
+  float C;
+  float D;
+  float E;
+  float F;
+  float G;
+  float H;
+  float I;
+  float J;
+  float K;
+  float L;
+  float M;
+  float N;
+  float O;
+  float P;
+  float Q; //parameters. Always 0-1, and we scale/alter them elsewhere.
 
 };
 

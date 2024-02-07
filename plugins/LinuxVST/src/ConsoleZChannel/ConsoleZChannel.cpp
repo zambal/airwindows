@@ -91,6 +91,16 @@ ConsoleZChannel::ConsoleZChannel(audioMasterCallback audioMaster) :
 	nvgRA = nvgRB = 0.0;
 	//end ButterComp
 
+  // Wider
+
+	P = 0.5;
+	Q = 0.5;
+
+	for(int fcount = 0; fcount < 4098; fcount++) {p[fcount] = 0.0;}
+	count = 0;
+
+  // FP-Dither
+
 	fpdL = 1.0; while (fpdL < 16386) fpdL = rand()*UINT32_MAX;
 	fpdR = 1.0; while (fpdR < 16386) fpdR = rand()*UINT32_MAX;
 	//this is reset: values being initialized only once. Startup values, whatever they are.
@@ -139,6 +149,8 @@ VstInt32 ConsoleZChannel::getChunk (void** data, bool isPreset)
 	chunkData[12] = M;
 	chunkData[13] = N;
 	chunkData[14] = O;
+	chunkData[15] = P;
+	chunkData[16] = Q;
 	/* Note: The way this is set up, it will break if you manage to save settings on an Intel
 	 machine and load them on a PPC Mac. However, it's fine if you stick to the machine you
 	 started with. */
@@ -165,6 +177,8 @@ VstInt32 ConsoleZChannel::setChunk (void* data, VstInt32 byteSize, bool isPreset
 	M = pinParameter(chunkData[12]);
 	N = pinParameter(chunkData[13]);
 	O = pinParameter(chunkData[14]);
+	P = pinParameter(chunkData[15]);
+	Q = pinParameter(chunkData[16]);
 	/* We're ignoring byteSize as we found it to be a filthy liar */
 
 	/* calculate any other fields you need here - you could copy in
@@ -189,6 +203,8 @@ void ConsoleZChannel::setParameter(VstInt32 index, float value) {
         case kParamM: M = value; break;
         case kParamN: N = value; break;
         case kParamO: O = value; break;
+        case kParamP: P = value; break;
+        case kParamQ: Q = value; break;
         default: throw; // unknown parameter, shouldn't happen!
     }
 }
@@ -210,6 +226,8 @@ float ConsoleZChannel::getParameter(VstInt32 index) {
         case kParamM: return M; break;
         case kParamN: return N; break;
         case kParamO: return O; break;
+        case kParamP: return P; break;
+        case kParamQ: return Q; break;
         default: break; // unknown parameter, shouldn't happen!
     } return 0.0; //we only need to update the relevant name, this is simple to manage
 }
@@ -231,6 +249,8 @@ void ConsoleZChannel::getParameterName(VstInt32 index, char *text) {
     		case kParamM: vst_strncpy (text, "Fader", kVstMaxParamStrLen); break;
     		case kParamN: vst_strncpy (text, "Compres", kVstMaxParamStrLen); break;
     		case kParamO: vst_strncpy (text, "CompSpd", kVstMaxParamStrLen); break;
+        case kParamP: vst_strncpy (text, "Width", kVstMaxParamStrLen); break;
+    		case kParamQ: vst_strncpy (text, "Center", kVstMaxParamStrLen); break;
         default: break; // unknown parameter, shouldn't happen!
     } //this is our labels for displaying in the VST host
 }
@@ -252,6 +272,8 @@ void ConsoleZChannel::getParameterDisplay(VstInt32 index, char *text) {
         case kParamM: float2string (M, text, kVstMaxParamStrLen); break;
         case kParamN: float2string (N, text, kVstMaxParamStrLen); break;
         case kParamO: float2string (O, text, kVstMaxParamStrLen); break;
+        case kParamP: float2string ((P*2.0)-1.0, text, kVstMaxParamStrLen); break;
+        case kParamQ: float2string ((Q*2.0)-1.0, text, kVstMaxParamStrLen); break;
         default: break; // unknown parameter, shouldn't happen!
 	} //this displays the values and handles 'popups' where it's discrete choices
 }
@@ -273,6 +295,8 @@ void ConsoleZChannel::getParameterLabel(VstInt32 index, char *text) {
         case kParamM: vst_strncpy (text, "", kVstMaxParamStrLen); break;
         case kParamN: vst_strncpy (text, "", kVstMaxParamStrLen); break;
         case kParamO: vst_strncpy (text, "", kVstMaxParamStrLen); break;
+        case kParamP: vst_strncpy (text, "", kVstMaxParamStrLen); break;
+        case kParamQ: vst_strncpy (text, "", kVstMaxParamStrLen); break;
 		default: break; // unknown parameter, shouldn't happen!
     }
 }
