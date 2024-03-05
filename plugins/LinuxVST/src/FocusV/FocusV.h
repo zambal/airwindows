@@ -1,19 +1,22 @@
 /* ========================================
- *  ConsoleLAChannel - ConsoleLAChannel.h
+ *  FocusV - FocusV.h
  *  Created 8/12/11 by SPIAdmin 
- *  Copyright (c) Airwindows, Airwindows uses the MIT license
+ *  Copyright (c) 2011 __MyCompanyName__, Airwindows uses the MIT license
  * ======================================== */
 
-#ifndef __ConsoleLAChannel_H
-#define __ConsoleLAChannel_H
+#ifndef __FocusV_H
+#define __FocusV_H
 
 #ifndef __audioeffect__
 #include "audioeffectx.h"
 #endif
 
+#define MAX_VECTOR_SIZE 256
+
 #include <set>
 #include <string>
 #include <math.h>
+#include "vectorclass.h"
 
 enum {
 	kParamA = 0,
@@ -27,14 +30,14 @@ enum {
 const int kNumPrograms = 0;
 const int kNumInputs = 2;
 const int kNumOutputs = 2;
-const unsigned long kUniqueId = 'clac';    //Change this to what the AU identity is!
+const unsigned long kUniqueId = 'focv';    //Change this to what the AU identity is!
 
-class ConsoleLAChannel : 
+class FocusV : 
     public AudioEffectX 
 {
 public:
-    ConsoleLAChannel(audioMasterCallback audioMaster);
-    ~ConsoleLAChannel();
+    FocusV(audioMasterCallback audioMaster);
+    ~FocusV();
     virtual bool getEffectName(char* name);                       // The plug-in name
     virtual VstPlugCategory getPlugCategory();                    // The general category for the plug-in
     virtual bool getProductString(char* text);                    // This is a unique plug-in string provided by Steinberg
@@ -56,26 +59,9 @@ private:
     char _programName[kVstMaxProgNameLen + 1];
     std::set< std::string > _canDo;
     
-	uint32_t fpdL;
-	uint32_t fpdR;
+	double figure[4] __attribute__((aligned(32)));
+	uint32_t fpd_b[4] __attribute__((aligned(32)));
 	//default stuff
-	
-	double subAL;
-	double subAR;
-	double subBL;
-	double subBR;
-	double subCL;
-	double subCR;
-	double hullL[225];	
-	double hullR[225];	
-	int hullp;
-	double pearB[22];
-	double midA;
-	double midB;
-	double bassA;
-	double bassB;
-	double gainA;
-	double gainB; //smoothed master fader for channel, from Z2 series filter code	
 
     float A;
     float B;

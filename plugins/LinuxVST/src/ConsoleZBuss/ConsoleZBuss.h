@@ -34,8 +34,41 @@ enum {
 	kParamP = 15,
 	kParamQ = 16,
 	kParamR = 17,
-  kNumParameters = 18
+	kParamS = 18,
+	kParamT = 19,
+	kParamU = 20,
+	kParamV = 21,
+	kParamW = 22,
+	kParamX = 23,
+	kParamY = 24,
+	kParamZ = 25,
+	kParamZ0 = 26,
+	kParamZ1 = 27,
+	kParamZ2 = 28,
+	kParamZ3 = 29,
+	kParamZ4 = 30,
+  kNumParameters = 31
 }; //
+
+enum {
+    kDKAD,
+    kDKCD,
+    kPEAK,
+    kSLEW,
+    kSUBS,
+    kMONO,
+    kSIDE,
+    kVINYL,
+    kAURAT,
+    kMONORAT,
+    kMONOLAT,
+    kPHONE,
+    kCANSA,
+    kCANSB,
+    kCANSC,
+    kCANSD,
+    kTRICK,
+};
 
 const int kNumPrograms = 0;
 const int kNumInputs = 2;
@@ -72,6 +105,27 @@ private:
 	uint32_t fpdL;
 	uint32_t fpdR;
 	//default stuff
+
+  // Hypersonic
+
+	enum {
+		fix_freq,
+		fix_reso,
+		fix_a0,
+		fix_a1,
+		fix_a2,
+		fix_b1,
+		fix_b2,
+		fix_sL1,
+		fix_sL2,
+		fix_sR1,
+		fix_sR2,
+		fix_total
+	}; //fixed frequency biquad filter for ultrasonics, stereo
+
+	double fixB[fix_total];
+	double fixC[fix_total];
+	double fixF[fix_total];
 
   // ConsoleLABuss
 	double lastSinewL;
@@ -141,6 +195,20 @@ private:
 	double previousR;
 	bool flip;
 
+  // BiquadOneHalf 1
+
+	double biquad_1_AL[9];
+	double biquad_1_AR[9];
+	double biquad_1_BL[9];
+	double biquad_1_BR[9];
+
+  // BiquadOneHalf 2
+
+	double biquad_2_AL[9];
+	double biquad_2_AR[9];
+	double biquad_2_BL[9];
+	double biquad_2_BR[9];
+
   // BussColors4
 
 	double bL[175]; //full buffer for high sample rates. Scales to 192K
@@ -155,6 +223,49 @@ private:
 	double slowdynL;
 	double slowdynR;
 	int gcount;
+
+  // ADClip7
+
+	double ad_lastSampleL;
+	double ad_lastSampleR;
+	float ad_bL[22200];
+	float ad_bR[22200];
+	int ad_gcount;
+	double lowsL;
+	double lowsR;
+	double iirLowsAL;
+	double iirLowsAR;
+	double iirLowsBL;
+	double iirLowsBR;
+	double refclipL;
+	double refclipR;
+
+  // Monitoring2
+
+	double biquad[fix_total];
+	//Bandpasses
+
+	float darkSampleL[100];
+	float darkSampleR[100];
+
+	double m_aL[1503], m_bL[1503], m_cL[1503], m_dL[1503];
+	double m_aR[1503], m_bR[1503], m_cR[1503], m_dR[1503];
+	int ax, bx, cx, dx;
+	//PeaksOnly
+	double m_lastSampleL, m_lastSampleR;
+	//SlewOnly
+	double iirSampleAL, iirSampleBL, iirSampleCL, iirSampleDL, iirSampleEL, iirSampleFL, iirSampleGL;
+	double iirSampleHL, iirSampleIL, iirSampleJL, iirSampleKL, iirSampleLL, iirSampleML, iirSampleNL, iirSampleOL, iirSamplePL;
+	double iirSampleQL, iirSampleRL, iirSampleSL;
+	double iirSampleTL, iirSampleUL, iirSampleVL;
+	double iirSampleWL, iirSampleXL, iirSampleYL, iirSampleZL;
+
+	double iirSampleAR, iirSampleBR, iirSampleCR, iirSampleDR, iirSampleER, iirSampleFR, iirSampleGR;
+	double iirSampleHR, iirSampleIR, iirSampleJR, iirSampleKR, iirSampleLR, iirSampleMR, iirSampleNR, iirSampleOR, iirSamplePR;
+	double iirSampleQR, iirSampleRR, iirSampleSR;
+	double iirSampleTR, iirSampleUR, iirSampleVR;
+	double iirSampleWR, iirSampleXR, iirSampleYR, iirSampleZR; // o/`
+	//SubsOnly
 
   // Parameters
 
@@ -176,6 +287,19 @@ private:
   float P;
   float Q;
   float R;
+  float S;
+  float T;
+  float U;
+  float V;
+  float W;
+  float X;
+  float Y;
+  float Z;
+  float Z0;
+  float Z1;
+  float Z2;
+  float Z3;
+  float Z4;
 };
 
 #endif

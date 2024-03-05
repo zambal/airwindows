@@ -94,12 +94,336 @@ void BiquadOneHalf::processReplacing(float **inputs, float **outputs, VstInt32 s
 		double drySampleL = inputSampleL;
 		double drySampleR = inputSampleR;
 		
+		double tempSampleL;
+		double tempSampleR;
+		
 		inputSampleL = sin(inputSampleL);
 		inputSampleR = sin(inputSampleR);
 		//encode Console5: good cleanness
 		
-		double tempSampleL;
-		double tempSampleR;
+		if (flip)
+		{
+			tempSampleL = (inputSampleL * biquadAL[2]) + biquadAL[7];
+			biquadAL[7] = (inputSampleL * biquadAL[3]) - (tempSampleL * biquadAL[5]) + biquadAL[8];
+			biquadAL[8] = (inputSampleL * biquadAL[4]) - (tempSampleL * biquadAL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadAR[2]) + biquadAR[7];
+			biquadAR[7] = (inputSampleR * biquadAR[3]) - (tempSampleR * biquadAR[5]) + biquadAR[8];
+			biquadAR[8] = (inputSampleR * biquadAR[4]) - (tempSampleR * biquadAR[6]);
+			inputSampleR = tempSampleR;
+		}
+		else
+		{
+			tempSampleL = (inputSampleL * biquadBL[2]) + biquadBL[7];
+			biquadBL[7] = (inputSampleL * biquadBL[3]) - (tempSampleL * biquadBL[5]) + biquadBL[8];
+			biquadBL[8] = (inputSampleL * biquadBL[4]) - (tempSampleL * biquadBL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadBR[2]) + biquadBR[7];
+			biquadBR[7] = (inputSampleR * biquadBR[3]) - (tempSampleR * biquadBR[5]) + biquadBR[8];
+			biquadBR[8] = (inputSampleR * biquadBR[4]) - (tempSampleR * biquadBR[6]);
+			inputSampleR = tempSampleR;
+		}
+		flip = !flip;
+		
+		if (inputSampleL > 1.0) inputSampleL = 1.0;
+		if (inputSampleL < -1.0) inputSampleL = -1.0;
+		if (inputSampleR > 1.0) inputSampleR = 1.0;
+		if (inputSampleR < -1.0) inputSampleR = -1.0;
+		//without this, you can get a NaN condition where it spits out DC offset at full blast!
+		inputSampleL = asin(inputSampleL);
+		inputSampleR = asin(inputSampleR);
+		//amplitude aspect
+		inputSampleL = sin(inputSampleL);
+		inputSampleR = sin(inputSampleR);
+		//encode Console5: good cleanness
+		
+		if (flip)
+		{
+			tempSampleL = (inputSampleL * biquadAL[2]) + biquadAL[7];
+			biquadAL[7] = (inputSampleL * biquadAL[3]) - (tempSampleL * biquadAL[5]) + biquadAL[8];
+			biquadAL[8] = (inputSampleL * biquadAL[4]) - (tempSampleL * biquadAL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadAR[2]) + biquadAR[7];
+			biquadAR[7] = (inputSampleR * biquadAR[3]) - (tempSampleR * biquadAR[5]) + biquadAR[8];
+			biquadAR[8] = (inputSampleR * biquadAR[4]) - (tempSampleR * biquadAR[6]);
+			inputSampleR = tempSampleR;
+		}
+		else
+		{
+			tempSampleL = (inputSampleL * biquadBL[2]) + biquadBL[7];
+			biquadBL[7] = (inputSampleL * biquadBL[3]) - (tempSampleL * biquadBL[5]) + biquadBL[8];
+			biquadBL[8] = (inputSampleL * biquadBL[4]) - (tempSampleL * biquadBL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadBR[2]) + biquadBR[7];
+			biquadBR[7] = (inputSampleR * biquadBR[3]) - (tempSampleR * biquadBR[5]) + biquadBR[8];
+			biquadBR[8] = (inputSampleR * biquadBR[4]) - (tempSampleR * biquadBR[6]);
+			inputSampleR = tempSampleR;
+		}
+		flip = !flip;
+		
+		if (inputSampleL > 1.0) inputSampleL = 1.0;
+		if (inputSampleL < -1.0) inputSampleL = -1.0;
+		if (inputSampleR > 1.0) inputSampleR = 1.0;
+		if (inputSampleR < -1.0) inputSampleR = -1.0;
+		//without this, you can get a NaN condition where it spits out DC offset at full blast!
+		inputSampleL = asin(inputSampleL);
+		inputSampleR = asin(inputSampleR);
+		//amplitude aspect
+		inputSampleL = sin(inputSampleL);
+		inputSampleR = sin(inputSampleR);
+		//encode Console5: good cleanness
+		
+		if (flip)
+		{
+			tempSampleL = (inputSampleL * biquadAL[2]) + biquadAL[7];
+			biquadAL[7] = (inputSampleL * biquadAL[3]) - (tempSampleL * biquadAL[5]) + biquadAL[8];
+			biquadAL[8] = (inputSampleL * biquadAL[4]) - (tempSampleL * biquadAL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadAR[2]) + biquadAR[7];
+			biquadAR[7] = (inputSampleR * biquadAR[3]) - (tempSampleR * biquadAR[5]) + biquadAR[8];
+			biquadAR[8] = (inputSampleR * biquadAR[4]) - (tempSampleR * biquadAR[6]);
+			inputSampleR = tempSampleR;
+		}
+		else
+		{
+			tempSampleL = (inputSampleL * biquadBL[2]) + biquadBL[7];
+			biquadBL[7] = (inputSampleL * biquadBL[3]) - (tempSampleL * biquadBL[5]) + biquadBL[8];
+			biquadBL[8] = (inputSampleL * biquadBL[4]) - (tempSampleL * biquadBL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadBR[2]) + biquadBR[7];
+			biquadBR[7] = (inputSampleR * biquadBR[3]) - (tempSampleR * biquadBR[5]) + biquadBR[8];
+			biquadBR[8] = (inputSampleR * biquadBR[4]) - (tempSampleR * biquadBR[6]);
+			inputSampleR = tempSampleR;
+		}
+		flip = !flip;
+		
+		if (inputSampleL > 1.0) inputSampleL = 1.0;
+		if (inputSampleL < -1.0) inputSampleL = -1.0;
+		if (inputSampleR > 1.0) inputSampleR = 1.0;
+		if (inputSampleR < -1.0) inputSampleR = -1.0;
+		//without this, you can get a NaN condition where it spits out DC offset at full blast!
+		inputSampleL = asin(inputSampleL);
+		inputSampleR = asin(inputSampleR);
+		//amplitude aspect
+		inputSampleL = sin(inputSampleL);
+		inputSampleR = sin(inputSampleR);
+		//encode Console5: good cleanness
+		
+		if (flip)
+		{
+			tempSampleL = (inputSampleL * biquadAL[2]) + biquadAL[7];
+			biquadAL[7] = (inputSampleL * biquadAL[3]) - (tempSampleL * biquadAL[5]) + biquadAL[8];
+			biquadAL[8] = (inputSampleL * biquadAL[4]) - (tempSampleL * biquadAL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadAR[2]) + biquadAR[7];
+			biquadAR[7] = (inputSampleR * biquadAR[3]) - (tempSampleR * biquadAR[5]) + biquadAR[8];
+			biquadAR[8] = (inputSampleR * biquadAR[4]) - (tempSampleR * biquadAR[6]);
+			inputSampleR = tempSampleR;
+		}
+		else
+		{
+			tempSampleL = (inputSampleL * biquadBL[2]) + biquadBL[7];
+			biquadBL[7] = (inputSampleL * biquadBL[3]) - (tempSampleL * biquadBL[5]) + biquadBL[8];
+			biquadBL[8] = (inputSampleL * biquadBL[4]) - (tempSampleL * biquadBL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadBR[2]) + biquadBR[7];
+			biquadBR[7] = (inputSampleR * biquadBR[3]) - (tempSampleR * biquadBR[5]) + biquadBR[8];
+			biquadBR[8] = (inputSampleR * biquadBR[4]) - (tempSampleR * biquadBR[6]);
+			inputSampleR = tempSampleR;
+		}
+		flip = !flip;
+		
+		if (inputSampleL > 1.0) inputSampleL = 1.0;
+		if (inputSampleL < -1.0) inputSampleL = -1.0;
+		if (inputSampleR > 1.0) inputSampleR = 1.0;
+		if (inputSampleR < -1.0) inputSampleR = -1.0;
+		//without this, you can get a NaN condition where it spits out DC offset at full blast!
+		inputSampleL = asin(inputSampleL);
+		inputSampleR = asin(inputSampleR);
+		//amplitude aspect
+		inputSampleL = sin(inputSampleL);
+		inputSampleR = sin(inputSampleR);
+		//encode Console5: good cleanness
+		
+		if (flip)
+		{
+			tempSampleL = (inputSampleL * biquadAL[2]) + biquadAL[7];
+			biquadAL[7] = (inputSampleL * biquadAL[3]) - (tempSampleL * biquadAL[5]) + biquadAL[8];
+			biquadAL[8] = (inputSampleL * biquadAL[4]) - (tempSampleL * biquadAL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadAR[2]) + biquadAR[7];
+			biquadAR[7] = (inputSampleR * biquadAR[3]) - (tempSampleR * biquadAR[5]) + biquadAR[8];
+			biquadAR[8] = (inputSampleR * biquadAR[4]) - (tempSampleR * biquadAR[6]);
+			inputSampleR = tempSampleR;
+		}
+		else
+		{
+			tempSampleL = (inputSampleL * biquadBL[2]) + biquadBL[7];
+			biquadBL[7] = (inputSampleL * biquadBL[3]) - (tempSampleL * biquadBL[5]) + biquadBL[8];
+			biquadBL[8] = (inputSampleL * biquadBL[4]) - (tempSampleL * biquadBL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadBR[2]) + biquadBR[7];
+			biquadBR[7] = (inputSampleR * biquadBR[3]) - (tempSampleR * biquadBR[5]) + biquadBR[8];
+			biquadBR[8] = (inputSampleR * biquadBR[4]) - (tempSampleR * biquadBR[6]);
+			inputSampleR = tempSampleR;
+		}
+		flip = !flip;
+		
+		if (inputSampleL > 1.0) inputSampleL = 1.0;
+		if (inputSampleL < -1.0) inputSampleL = -1.0;
+		if (inputSampleR > 1.0) inputSampleR = 1.0;
+		if (inputSampleR < -1.0) inputSampleR = -1.0;
+		//without this, you can get a NaN condition where it spits out DC offset at full blast!
+		inputSampleL = asin(inputSampleL);
+		inputSampleR = asin(inputSampleR);
+		//amplitude aspect
+		inputSampleL = sin(inputSampleL);
+		inputSampleR = sin(inputSampleR);
+		//encode Console5: good cleanness
+		
+		if (flip)
+		{
+			tempSampleL = (inputSampleL * biquadAL[2]) + biquadAL[7];
+			biquadAL[7] = (inputSampleL * biquadAL[3]) - (tempSampleL * biquadAL[5]) + biquadAL[8];
+			biquadAL[8] = (inputSampleL * biquadAL[4]) - (tempSampleL * biquadAL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadAR[2]) + biquadAR[7];
+			biquadAR[7] = (inputSampleR * biquadAR[3]) - (tempSampleR * biquadAR[5]) + biquadAR[8];
+			biquadAR[8] = (inputSampleR * biquadAR[4]) - (tempSampleR * biquadAR[6]);
+			inputSampleR = tempSampleR;
+		}
+		else
+		{
+			tempSampleL = (inputSampleL * biquadBL[2]) + biquadBL[7];
+			biquadBL[7] = (inputSampleL * biquadBL[3]) - (tempSampleL * biquadBL[5]) + biquadBL[8];
+			biquadBL[8] = (inputSampleL * biquadBL[4]) - (tempSampleL * biquadBL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadBR[2]) + biquadBR[7];
+			biquadBR[7] = (inputSampleR * biquadBR[3]) - (tempSampleR * biquadBR[5]) + biquadBR[8];
+			biquadBR[8] = (inputSampleR * biquadBR[4]) - (tempSampleR * biquadBR[6]);
+			inputSampleR = tempSampleR;
+		}
+		flip = !flip;
+		
+		if (inputSampleL > 1.0) inputSampleL = 1.0;
+		if (inputSampleL < -1.0) inputSampleL = -1.0;
+		if (inputSampleR > 1.0) inputSampleR = 1.0;
+		if (inputSampleR < -1.0) inputSampleR = -1.0;
+		//without this, you can get a NaN condition where it spits out DC offset at full blast!
+		inputSampleL = asin(inputSampleL);
+		inputSampleR = asin(inputSampleR);
+		//amplitude aspect
+		inputSampleL = sin(inputSampleL);
+		inputSampleR = sin(inputSampleR);
+		//encode Console5: good cleanness
+		
+		if (flip)
+		{
+			tempSampleL = (inputSampleL * biquadAL[2]) + biquadAL[7];
+			biquadAL[7] = (inputSampleL * biquadAL[3]) - (tempSampleL * biquadAL[5]) + biquadAL[8];
+			biquadAL[8] = (inputSampleL * biquadAL[4]) - (tempSampleL * biquadAL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadAR[2]) + biquadAR[7];
+			biquadAR[7] = (inputSampleR * biquadAR[3]) - (tempSampleR * biquadAR[5]) + biquadAR[8];
+			biquadAR[8] = (inputSampleR * biquadAR[4]) - (tempSampleR * biquadAR[6]);
+			inputSampleR = tempSampleR;
+		}
+		else
+		{
+			tempSampleL = (inputSampleL * biquadBL[2]) + biquadBL[7];
+			biquadBL[7] = (inputSampleL * biquadBL[3]) - (tempSampleL * biquadBL[5]) + biquadBL[8];
+			biquadBL[8] = (inputSampleL * biquadBL[4]) - (tempSampleL * biquadBL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadBR[2]) + biquadBR[7];
+			biquadBR[7] = (inputSampleR * biquadBR[3]) - (tempSampleR * biquadBR[5]) + biquadBR[8];
+			biquadBR[8] = (inputSampleR * biquadBR[4]) - (tempSampleR * biquadBR[6]);
+			inputSampleR = tempSampleR;
+		}
+		flip = !flip;
+		
+		if (inputSampleL > 1.0) inputSampleL = 1.0;
+		if (inputSampleL < -1.0) inputSampleL = -1.0;
+		if (inputSampleR > 1.0) inputSampleR = 1.0;
+		if (inputSampleR < -1.0) inputSampleR = -1.0;
+		//without this, you can get a NaN condition where it spits out DC offset at full blast!
+		inputSampleL = asin(inputSampleL);
+		inputSampleR = asin(inputSampleR);
+		//amplitude aspect
+		inputSampleL = sin(inputSampleL);
+		inputSampleR = sin(inputSampleR);
+		//encode Console5: good cleanness
+		
+		if (flip)
+		{
+			tempSampleL = (inputSampleL * biquadAL[2]) + biquadAL[7];
+			biquadAL[7] = (inputSampleL * biquadAL[3]) - (tempSampleL * biquadAL[5]) + biquadAL[8];
+			biquadAL[8] = (inputSampleL * biquadAL[4]) - (tempSampleL * biquadAL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadAR[2]) + biquadAR[7];
+			biquadAR[7] = (inputSampleR * biquadAR[3]) - (tempSampleR * biquadAR[5]) + biquadAR[8];
+			biquadAR[8] = (inputSampleR * biquadAR[4]) - (tempSampleR * biquadAR[6]);
+			inputSampleR = tempSampleR;
+		}
+		else
+		{
+			tempSampleL = (inputSampleL * biquadBL[2]) + biquadBL[7];
+			biquadBL[7] = (inputSampleL * biquadBL[3]) - (tempSampleL * biquadBL[5]) + biquadBL[8];
+			biquadBL[8] = (inputSampleL * biquadBL[4]) - (tempSampleL * biquadBL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadBR[2]) + biquadBR[7];
+			biquadBR[7] = (inputSampleR * biquadBR[3]) - (tempSampleR * biquadBR[5]) + biquadBR[8];
+			biquadBR[8] = (inputSampleR * biquadBR[4]) - (tempSampleR * biquadBR[6]);
+			inputSampleR = tempSampleR;
+		}
+		flip = !flip;
+		
+		if (inputSampleL > 1.0) inputSampleL = 1.0;
+		if (inputSampleL < -1.0) inputSampleL = -1.0;
+		if (inputSampleR > 1.0) inputSampleR = 1.0;
+		if (inputSampleR < -1.0) inputSampleR = -1.0;
+		//without this, you can get a NaN condition where it spits out DC offset at full blast!
+		inputSampleL = asin(inputSampleL);
+		inputSampleR = asin(inputSampleR);
+		//amplitude aspect
+		inputSampleL = sin(inputSampleL);
+		inputSampleR = sin(inputSampleR);
+		//encode Console5: good cleanness
+		
+		if (flip)
+		{
+			tempSampleL = (inputSampleL * biquadAL[2]) + biquadAL[7];
+			biquadAL[7] = (inputSampleL * biquadAL[3]) - (tempSampleL * biquadAL[5]) + biquadAL[8];
+			biquadAL[8] = (inputSampleL * biquadAL[4]) - (tempSampleL * biquadAL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadAR[2]) + biquadAR[7];
+			biquadAR[7] = (inputSampleR * biquadAR[3]) - (tempSampleR * biquadAR[5]) + biquadAR[8];
+			biquadAR[8] = (inputSampleR * biquadAR[4]) - (tempSampleR * biquadAR[6]);
+			inputSampleR = tempSampleR;
+		}
+		else
+		{
+			tempSampleL = (inputSampleL * biquadBL[2]) + biquadBL[7];
+			biquadBL[7] = (inputSampleL * biquadBL[3]) - (tempSampleL * biquadBL[5]) + biquadBL[8];
+			biquadBL[8] = (inputSampleL * biquadBL[4]) - (tempSampleL * biquadBL[6]);
+			inputSampleL = tempSampleL;
+			tempSampleR = (inputSampleR * biquadBR[2]) + biquadBR[7];
+			biquadBR[7] = (inputSampleR * biquadBR[3]) - (tempSampleR * biquadBR[5]) + biquadBR[8];
+			biquadBR[8] = (inputSampleR * biquadBR[4]) - (tempSampleR * biquadBR[6]);
+			inputSampleR = tempSampleR;
+		}
+		flip = !flip;
+		
+		if (inputSampleL > 1.0) inputSampleL = 1.0;
+		if (inputSampleL < -1.0) inputSampleL = -1.0;
+		if (inputSampleR > 1.0) inputSampleR = 1.0;
+		if (inputSampleR < -1.0) inputSampleR = -1.0;
+		//without this, you can get a NaN condition where it spits out DC offset at full blast!
+		inputSampleL = asin(inputSampleL);
+		inputSampleR = asin(inputSampleR);
+		//amplitude aspect
+		inputSampleL = sin(inputSampleL);
+		inputSampleR = sin(inputSampleR);
+		//encode Console5: good cleanness
 		
 		if (flip)
 		{

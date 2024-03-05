@@ -33,7 +33,16 @@ enum {
 	kParamO = 14,
 	kParamP = 15,
 	kParamQ = 16,
-  kNumParameters = 17
+	kParamR = 17,
+	kParamS = 18,
+	kParamT = 19,
+	kParamU = 20,
+	kParamV = 21,
+	kParamW = 22,
+	kParamX = 23,
+	kParamY = 24,
+	kParamZ = 25,
+  kNumParameters = 26
 }; //
 
 const int kNumPrograms = 0;
@@ -89,8 +98,24 @@ private:
 		fix_total
 	}; //fixed frequency biquad filter for ultrasonics, stereo
 
-	double fixF[fix_total];
+	double fixA[fix_total];
+	double fixD[fix_total];
+	double fixE[fix_total];
 	double fixG[fix_total];
+
+  // BiquadOneHalf 1
+
+	double biquad_1_AL[9];
+	double biquad_1_AR[9];
+	double biquad_1_BL[9];
+	double biquad_1_BR[9];
+
+  // BiquadOneHalf 2
+
+	double biquad_2_AL[9];
+	double biquad_2_AR[9];
+	double biquad_2_BL[9];
+	double biquad_2_BR[9];
 
   // Desk4
 
@@ -107,6 +132,10 @@ private:
 	double lastSlewR;
 
 	int gcount;
+
+  // PurestDrive
+	double pd_previousSampleL;
+	double pd_previousSampleR;
 
   // Res2
 
@@ -185,8 +214,16 @@ private:
   float N;
   float O;
   float P;
-  float Q; //parameters. Always 0-1, and we scale/alter them elsewhere.
-
+  float Q;
+  float R; 
+  float S; 
+  float T; 
+  float U; 
+  float V; 
+  float W; 
+  float X; 
+  float Y; 
+  float Z; 
 };
 
 #endif

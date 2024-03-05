@@ -1,33 +1,27 @@
 /* ========================================
- *  ConsoleLAChannel - ConsoleLAChannel.h
- *  Copyright (c) airwindows, Airwindows uses the MIT license
+ *  FocusV - FocusV.h
+ *  Copyright (c) 2016 airwindows, Airwindows uses the MIT license
  * ======================================== */
 
-#ifndef __ConsoleLAChannel_H
-#include "ConsoleLAChannel.h"
+#ifndef __FocusV_H
+#include "FocusV.h"
 #endif
 
-AudioEffect* createEffectInstance(audioMasterCallback audioMaster) {return new ConsoleLAChannel(audioMaster);}
+AudioEffect* createEffectInstance(audioMasterCallback audioMaster) {return new FocusV(audioMaster);}
 
-ConsoleLAChannel::ConsoleLAChannel(audioMasterCallback audioMaster) :
+FocusV::FocusV(audioMasterCallback audioMaster) :
     AudioEffectX(audioMaster, kNumPrograms, kNumParameters)
 {
-	A = 0.5;
+	A = 0.0;
 	B = 0.5;
 	C = 0.5;
-	D = 0.5;
-	E = 0.5;
-	
-	for(int count = 0; count < 222; count++) {hullL[count] = 0.0; hullR[count] = 0.0;}
-	hullp = 1;
-	for (int x = 0; x < 21; x++) pearB[x] = 0.0;
-	subAL = subAR = subBL = subBR = subCL = subCR = 0.0;
-	midA = midB = 0.0;
-	bassA = bassB = 0.0;
-	gainA = gainB = 1.0;
-	
-	fpdL = 1.0; while (fpdL < 16386) fpdL = rand()*UINT32_MAX;
-	fpdR = 1.0; while (fpdR < 16386) fpdR = rand()*UINT32_MAX;
+	D = 1.0;
+	E = 1.0;
+	for (int x = 0; x < 4; x++) {figure[x] = 0.0;}
+	fpd_b[0] = 1.0; while (fpd_b[0] < 16386) fpd_b[0] = rand()*UINT32_MAX;
+	fpd_b[1] = 1.0; while (fpd_b[1] < 16386) fpd_b[1]= rand()*UINT32_MAX;
+  fpd_b[2] = fpd_b[0]; fpd_b[2] ^= fpd_b[2] << 13; fpd_b[2] ^= fpd_b[2] >> 17; fpd_b[2] ^= fpd_b[2] << 5; 
+  fpd_b[3] = fpd_b[1]; fpd_b[3] ^= fpd_b[3] << 13; fpd_b[3] ^= fpd_b[3] >> 17; fpd_b[3] ^= fpd_b[3] << 5;
 	//this is reset: values being initialized only once. Startup values, whatever they are.
 	
     _canDo.insert("plugAsChannelInsert"); // plug-in can be used as a channel insert effect.
@@ -42,10 +36,10 @@ ConsoleLAChannel::ConsoleLAChannel(audioMasterCallback audioMaster) :
     vst_strncpy (_programName, "Default", kVstMaxProgNameLen); // default program name
 }
 
-ConsoleLAChannel::~ConsoleLAChannel() {}
-VstInt32 ConsoleLAChannel::getVendorVersion () {return 1000;}
-void ConsoleLAChannel::setProgramName(char *name) {vst_strncpy (_programName, name, kVstMaxProgNameLen);}
-void ConsoleLAChannel::getProgramName(char *name) {vst_strncpy (name, _programName, kVstMaxProgNameLen);}
+FocusV::~FocusV() {}
+VstInt32 FocusV::getVendorVersion () {return 1000;}
+void FocusV::setProgramName(char *name) {vst_strncpy (_programName, name, kVstMaxProgNameLen);}
+void FocusV::getProgramName(char *name) {vst_strncpy (name, _programName, kVstMaxProgNameLen);}
 //airwindows likes to ignore this stuff. Make your own programs, and make a different plugin rather than
 //trying to do versioning and preventing people from using older versions. Maybe they like the old one!
 
@@ -56,7 +50,7 @@ static float pinParameter(float data)
 	return data;
 }
 
-VstInt32 ConsoleLAChannel::getChunk (void** data, bool isPreset)
+VstInt32 FocusV::getChunk (void** data, bool isPreset)
 {
 	float *chunkData = (float *)calloc(kNumParameters, sizeof(float));
 	chunkData[0] = A;
@@ -72,7 +66,7 @@ VstInt32 ConsoleLAChannel::getChunk (void** data, bool isPreset)
 	return kNumParameters * sizeof(float);
 }
 
-VstInt32 ConsoleLAChannel::setChunk (void* data, VstInt32 byteSize, bool isPreset)
+VstInt32 FocusV::setChunk (void* data, VstInt32 byteSize, bool isPreset)
 {	
 	float *chunkData = (float *)data;
 	A = pinParameter(chunkData[0]);
@@ -87,7 +81,7 @@ VstInt32 ConsoleLAChannel::setChunk (void* data, VstInt32 byteSize, bool isPrese
 	return 0;
 }
 
-void ConsoleLAChannel::setParameter(VstInt32 index, float value) {
+void FocusV::setParameter(VstInt32 index, float value) {
     switch (index) {
         case kParamA: A = value; break;
         case kParamB: B = value; break;
@@ -98,7 +92,7 @@ void ConsoleLAChannel::setParameter(VstInt32 index, float value) {
     }
 }
 
-float ConsoleLAChannel::getParameter(VstInt32 index) {
+float FocusV::getParameter(VstInt32 index) {
     switch (index) {
         case kParamA: return A; break;
         case kParamB: return B; break;
@@ -109,31 +103,39 @@ float ConsoleLAChannel::getParameter(VstInt32 index) {
     } return 0.0; //we only need to update the relevant name, this is simple to manage
 }
 
-void ConsoleLAChannel::getParameterName(VstInt32 index, char *text) {
+void FocusV::getParameterName(VstInt32 index, char *text) {
     switch (index) {
-        case kParamA: vst_strncpy (text, "Treble", kVstMaxParamStrLen); break;
-		case kParamB: vst_strncpy (text, "Mid", kVstMaxParamStrLen); break;
-		case kParamC: vst_strncpy (text, "Bass", kVstMaxParamStrLen); break;
-		case kParamD: vst_strncpy (text, "Pan", kVstMaxParamStrLen); break;
-		case kParamE: vst_strncpy (text, "Fader", kVstMaxParamStrLen); break;
+        case kParamA: vst_strncpy (text, "Boost", kVstMaxParamStrLen); break;
+		case kParamB: vst_strncpy (text, "FocusV", kVstMaxParamStrLen); break;
+		case kParamC: vst_strncpy (text, "Mode", kVstMaxParamStrLen); break;
+		case kParamD: vst_strncpy (text, "Output", kVstMaxParamStrLen); break;
+		case kParamE: vst_strncpy (text, "Dry/Wet", kVstMaxParamStrLen); break;
         default: break; // unknown parameter, shouldn't happen!
     } //this is our labels for displaying in the VST host
 }
 
-void ConsoleLAChannel::getParameterDisplay(VstInt32 index, char *text) {
+void FocusV::getParameterDisplay(VstInt32 index, char *text) {
     switch (index) {
-        case kParamA: float2string (A, text, kVstMaxParamStrLen); break;
+        case kParamA: float2string (A*12.0, text, kVstMaxParamStrLen); break;
         case kParamB: float2string (B, text, kVstMaxParamStrLen); break;
-        case kParamC: float2string (C, text, kVstMaxParamStrLen); break;
+        case kParamC: switch((VstInt32)( C * 4.999 )) //0 to almost edge of # of params
+		{
+			case 0: vst_strncpy (text, "Density", kVstMaxParamStrLen); break;
+			case 1: vst_strncpy (text, "Drive", kVstMaxParamStrLen); break;
+			case 2: vst_strncpy (text, "Spiral", kVstMaxParamStrLen); break;
+			case 3: vst_strncpy (text, "Mojo", kVstMaxParamStrLen); break;
+			case 4: vst_strncpy (text, "Dyno", kVstMaxParamStrLen); break;
+			default: break; // unknown parameter, shouldn't happen!
+		} break;
         case kParamD: float2string (D, text, kVstMaxParamStrLen); break;
         case kParamE: float2string (E, text, kVstMaxParamStrLen); break;
         default: break; // unknown parameter, shouldn't happen!
 	} //this displays the values and handles 'popups' where it's discrete choices
 }
 
-void ConsoleLAChannel::getParameterLabel(VstInt32 index, char *text) {
+void FocusV::getParameterLabel(VstInt32 index, char *text) {
     switch (index) {
-        case kParamA: vst_strncpy (text, "", kVstMaxParamStrLen); break;
+        case kParamA: vst_strncpy (text, "dB", kVstMaxParamStrLen); break;
         case kParamB: vst_strncpy (text, "", kVstMaxParamStrLen); break;
         case kParamC: vst_strncpy (text, "", kVstMaxParamStrLen); break;
         case kParamD: vst_strncpy (text, "", kVstMaxParamStrLen); break;
@@ -142,19 +144,19 @@ void ConsoleLAChannel::getParameterLabel(VstInt32 index, char *text) {
     }
 }
 
-VstInt32 ConsoleLAChannel::canDo(char *text) 
+VstInt32 FocusV::canDo(char *text) 
 { return (_canDo.find(text) == _canDo.end()) ? -1: 1; } // 1 = yes, -1 = no, 0 = don't know
 
-bool ConsoleLAChannel::getEffectName(char* name) {
-    vst_strncpy(name, "ConsoleLAChannel", kVstMaxProductStrLen); return true;
+bool FocusV::getEffectName(char* name) {
+    vst_strncpy(name, "FocusV", kVstMaxProductStrLen); return true;
 }
 
-VstPlugCategory ConsoleLAChannel::getPlugCategory() {return kPlugCategEffect;}
+VstPlugCategory FocusV::getPlugCategory() {return kPlugCategEffect;}
 
-bool ConsoleLAChannel::getProductString(char* text) {
-  	vst_strncpy (text, "airwindows ConsoleLAChannel", kVstMaxProductStrLen); return true;
+bool FocusV::getProductString(char* text) {
+  	vst_strncpy (text, "airwindows FocusV", kVstMaxProductStrLen); return true;
 }
 
-bool ConsoleLAChannel::getVendorString(char* text) {
+bool FocusV::getVendorString(char* text) {
   	vst_strncpy (text, "airwindows", kVstMaxVendorStrLen); return true;
 }
