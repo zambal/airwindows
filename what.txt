@@ -1,7 +1,8 @@
  These are MIT licensed open source: see my github at https://github.com/airwindows/airwindows for the source.
 Acceleration is an acceleration limiter that tames edge, leaves brightness.
 Acceleration2 is Acceleration, better! Updated for high sample rate and more extreme effect.
-ADClip7 is the ultimate Airwindows loudness maximizer/ peak control.
+ADClip7 is the original Airwindows loudness maximizer/ peak control.
+ADClip8 is the ultimate Airwindows loudenator/biggenator.
 ADT is a double short delay tap with saturation.
 Air is a different bright EQ from any other. Requires 44.1K.
 Air2 is a different bright EQ with silk tone and high sample rate support.
@@ -150,6 +151,7 @@ EveryTrim is Left/Right, Mid/Side, and Master in one plugin.
 Exciter is an Aural Exciter plugin that can be both subtle and extreme.
 Facet is a new kind of hard clip that adds two sharp corners into the wave.
 FathomFive is a way of supplementing extreme bass that’s not just EQ.
+FinalClip is one stage of ADClip8 set up to clip +6dB for Final Cut Pro.
 FireAmp is a bright, loud, tubey amp sim for leads and dirt guitar.
 Flipity is a channel phase flipper/swapper utility.
 Floor is fake bottom octave for fun and profit!
@@ -196,6 +198,7 @@ IronOxideClassic2 is my bandpassy tape sim, updated for high sample rate and ali
 Isolator is a steep highpass or lowpass filter, like you might find in a speaker crossover.
 Isolator2 is Isolator, but with control smoothing and a new resonance booster.
 kCathedral is a giant reverby space.
+kCathedral2 is a giant reverby space modeled after the Bricasti Cathedral.
 kChamberAR is a take on tape echo into chamber echo.
 kPlateA is a plate reverb, not unlike its namesake atop Abbey Road.
 kPlateB is a plate reverb, not unlike its namesake atop Abbey Road.
@@ -289,6 +292,7 @@ RightoMono copies one channel to both, losslessly.
 SampleDelay is three delays combined: millisecond, sample and subsample.
 SampleUndelay is the original AU SampleDelay that declares lots of latency to do 'negative delay'.
 Shape is an asymmetrical waveshaper for peak manipulating.
+ShortBuss chases second harmonic, to add or remove it.
 SideDull is like Sidepass, but a lowpass on the side channel. Treble-centerer.
 Sidepass is a simple utility plugin, a highpass on the side channel. Mono-maker.
 Silhouette replaces the sound with raw noise sculpted to match its dynamics.

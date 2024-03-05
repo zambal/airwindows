@@ -17,7 +17,7 @@ Biquads: BiquadPlus, Biquad, BiquadDouble, BiquadOneHalf, BiquadTriple, Biquad2
 
 Brightness: PlatinumSlew, DeBess, GoldenSlew, Sinew, SlewSonic, Acceleration2, DeEss, Smooth, EverySlew, Slew3, Slew2, Slew, Air2, Air, PurestAir, Acceleration, DeHiss, Hypersonic, HypersonX, Ultrasonic, UltrasonicLite, UltrasonicMed, UltrasonX
 
-Clipping: ClipOnly2, ClipSoftly, OneCornerClip, ADClip7, AQuickVoiceClip, ClipOnly
+Clipping: ClipOnly2, ADClip8, ClipSoftly, OneCornerClip, ADClip7, AQuickVoiceClip, ClipOnly, FinalClip
 
 Consoles: ConsoleLABuss, ConsoleLAChannel, ConsoleMCBuss, ConsoleMCChannel, ConsoleMDBuss, ConsoleMDChannel, Console8LiteChannel, Console8LiteBuss, Console8BussHype, Console8BussIn, Console8BussOut, Console8ChannelHype, Console8ChannelIn, Console8ChannelOut, Console8SubHype, Console8SubIn, Console8SubOut, Console0Channel, Console0Buss, PurestConsole3Buss, PurestConsole3Channel, PurestConsole2Buss, PurestConsole2Channel, Console7Buss, Console7Channel, Console7Cascade, Console7Crunch, PurestConsoleBuss, PurestConsoleChannel,Console6Buss, Console6Channel, PDBuss, PDChannel, Console5Buss, Console5Channel, Console5DarkCh, C5RawBuss, C5RawChannel, AtmosphereBuss, AtmosphereChannel, Console4Buss, Console4Channel, EveryConsole
 
@@ -27,7 +27,7 @@ Dithers: Dark, PaulWide, PaulDither, TPDFWide, TPDFDither, NotJustAnotherDither,
 
 Dynamics: Pop2, Pressure5, Dynamics, Pop, DigitalBlack, Logical4, VariMu, ButterComp2, curve, Recurve, Pyewacket, BlockParty, SoftGate, Thunder, Compresaturator, DrumSlam, ButterComp, BrassRider, Point, Gatelope, PodcastDeluxe, Podcast, Swell, PurestSquish, Pressure4, Surge, SurgeTide
 
-Effects: GalacticVibe, CloudCoat, Fracture2, Dubly, Pafnuty2, PitchNasty, GuitarConditioner, Aura, TremoSquare, Tremolo, GlitchShifter, Gringer, Exciter, Energy2, Energy, Facet, Fracture, PowerSag2, PowerSag, Preponderant, Nikola
+Effects: GalacticVibe, CloudCoat, Fracture2, Dubly, Pafnuty2, PitchNasty, ShortBuss, GuitarConditioner, Aura, TremoSquare, Tremolo, GlitchShifter, Gringer, Exciter, Energy2, Energy, Facet, Fracture, PowerSag2, PowerSag, Preponderant, Nikola
 
 Filter: Baxandall2, Capacitor2, Pear, ResEQ2, SubTight, CStrip2, Weight, Isolator2, Holt2, Holt, ToneSlant, AverMatrix, Average, MackEQ, Hull2, Baxandall, Hull, EQ, Capacitor, Isolator, TapeFat, ResEQ, Lowpass2, Highpass2, Distance2, Distance, Lowpass, Highpass
 
@@ -35,7 +35,7 @@ Lo-Fi: Pockey2, Flutter, CrunchyGrooveWear, GrooveWear, Pockey, DeRez2, BitGlitt
 
 Noise: Noise, Texturize, TexturizeMS, VoiceOfTheStarship, DarkNoise, ElectroHat, Silhouette, TapeDust
 
-Reverb: kPlateD, kPlateB, kPlateA, kPlateC, Verbity2, Galactic, Galactic2, kCathedral, Verbity, Chamber2, Chamber, Infinity2, NonlinearSpace, Infinity, MatrixVerb, PocketVerbs, Reverb
+Reverb: kCathedral2, kPlateD, kPlateB, kPlateA, kPlateC, Verbity2, Galactic, Galactic2,    sVerbity, Chamber2, Chamber, Infinity2, NonlinearSpace, kCathedral, Infinity, MatrixVerb, PocketVerbs, Reverb
 
 Saturation: Creature, Huge, NCSeventeen, Tube2, Tube, Spiral2, PurestDrive, Focus, Mojo, Dyno, Spiral, UnBox, Desk4, Righteous4
 
@@ -90,6 +90,24 @@ The gain-matched mode has two uses. You could use it to ‘set your slam level�
 The last mode is Clip Only, and rather than selecting the various algorithm outputs individually, this version of ADClip gives you them at their respective loudnesses, combined. That means you can engage this mode to hear ONLY the clips, and check that you’re not hearing any recognizable ‘scrunch’ of continuing clippage. But since you’re also hearing the enhance outputs, you can adjust softness and enhance level to balance the stuff being introduced to the sound. My recommendation is to set the controls so no one type of artifact predominates: it’s not necessarily great to throw in a bunch of ‘enhance’ bass just because you can. If you’re hearing that much of it that you’re tempted to use it as an effect, you’re definitely also over-slamming your music.
 
 So my recommendation in 2017 heading to 2018, is to use ADClip7 in gain-matched mode, to keep that ‘true peak’ measurement within the Mastered For iTunes requirements. I’m sure not everybody will stick to that, but I’m happy to say it is actually quite good for doing that, and if people want to smash stuff with it and enjoy the bass thud, that’s their affair. Remember a clipper makes stuff dynamic and punchy, not ‘flattened out’: use a limiter if you need dynamically flat, or perhaps both. In this modern era of replay gain, I’m going to suggest that dynamic and punchy is where it’s at. Learn the lessons of the LUFS meter! They’re available to us all, now.
+
+############ ADClip8 is the ultimate Airwindows loudenator/biggenator.
+
+The last time we saw an Airwindows ADClip, the full version rather than a neat and tidy stripped-down version, was October 8… of 2017. It's been more than six years since the king of loudenators saw an update, in part because ClipOnly got followed by ClipOnly2, which was such a good high-sample-rate clipper that it was all I needed for years. ClipOnly2 is still the cleanest, purest way to take small amounts of peak clipping to your signal: it's great as a safety clip.
+
+But, while working on a new version tailored to the needs of Final Cut Pro (which is also coming), something new arose.
+
+What would happen if the FCP version, which has a built-in slew clip and makes heavy use of Golden Ratios to arrive at its results, was adapted to a new ADClip? What if it was scaled to regular clipping levels, given a ceiling control to dial back its maximum to taste, what would happen if it was stacked up with a whole array of FinalClips in series like some of the other Airwindows plugins like to do? We're no longer dealing with ClipOnly2. Much like the original ADClip7, we're adding extra stuff and running a more complicated algorithm. But we've still got some of the special features of ADClip7, like the gain-matched mode and the Clips Only setting.
+
+Enter ADClip8. It has more settings. They go Normal, Gain Matched, Clip Only… then, Afterburner, Explode, Nuke, Apocalypse, and lastly Apotheosis. No, really! That's the new settings.
+
+What they represent is added stages, so Normal is a single stage (as is Gain Matched), Clip Only shows you where clips begin, and then the new modes are named for the sounds they produce, at two, three, four, five and six stages of special slew-clipped ClipOnly2 style sample-rate aware clipping. In practice, think 'bigger, bassier, thicker' as you continue to add stages. You may not always want to run the full six stages, you might want to voice it to your needs.
+
+The interesting part is how all this affects intersample peaking. Because the process brings in slew clipping and repeated use of the ClipOnly2 algorithm, which resists harsh entry into and exit from a clipped state, dialing up ADClip8 and cranking the gain produces an intensely saturated sound that resists intersample peaking not through filtration, but mechanically. It will literally put in transition samples to resist the intersample peaks from going beyond regular clipping. The more stages, the more thoroughly it resists 'true peak'.
+
+I would say don't use this for evil but who am I kidding. If you beat everyone with 'competitive loudness' this way, please never expect me to listen to what you did, I'll be hiding under my bed, regretting everything. :)
+
+For what it's worth, 'Apotheosis' mode should also be a very nice way to do extremely moderate transparent clipping of challenging material: ClipOnly2 will still be more transparent but only sounds like a slightly brighter version of ADClip8 Normal mode. Apotheosis mode simply does more and I wouldn't blame anybody for preferring it. Hope you like ADClip8!
 
 ############ ADT is a double short delay tap with saturation.
 
@@ -1820,6 +1838,22 @@ It’s all in the rather long video, and of course you can simply download and u
 
 (followup: this is a very old plugin. Newer ones that do this type of thing with increasing ease and friendliness are DubSub, DubCenter, and BassKit. FathomFive is wilder, and you probably want to keep an eye on whether it is spitting out excessive DC offsets, as the algorithm these plugins use for the bass is tricky to manage)
 
+############ FinalClip is one stage of ADClip8 set up to clip +6dB for Final Cut Pro.
+
+If you like ADClip8, this came first and is basically the seed of ADClip8.
+
+FinalClip is a few variations on ClipOnly2, with a bit of slew clipping thrown in, and adjusted to work specifically for Final Cut Pro, the video software I use. This is because if I put any normal clipper such as you'd use in a DAW into Final Cut, it applies the clip to the cut at 6dB down. I can only assume this has to do with how it gain stages stuff for video. There's a way to gather clips into some sort of large composite clip and apply a 'master buss' plugin to the sum, and if you thought Airwindows Console in DAWs was awkward to set up, yikes! I'm not even trying to do that. I just run camera audio directly to the output of Final Cut and use that.
+
+Because the clip point is 6 dB down, it seemed like I could build a special clipper just for Final Cut, that would always apply what I needed. I could control loud voice outbursts, soften the entry to/exit from clipped parts in the way ClipOnly2 does, and I could even throw in a very subtle slew-clip to just faintly soften treble information, so my sibilance off my Roswell Colares would never be annoying (it's pretty good already, the mic tries to imitate an ELA M 251)
+
+Not only did this work, it turned out that allowing multiple stages of exactly this gave me ADClip8! So everybody wins.
+
+And of course I'm immediately letting people have the tool I made for me. If you experience normal clippers such as ClipOnly taking effect 6dB down, this is the one to use. Or, if for instance you're hammering a peak limiter on your mix buss at way over +6dB to the buss, then you can try this to precondition what the limiter sees, and you might get a pleasing result.
+
+But really, this just exists as a tool for me, or anyone who's using Final Cut and would like to drag a simple Airwindows clipper onto a (video) clip in the timeline, and have it make peaks more elegant, with no red clip lights happening and no abrasive highs when things get loud. Using this, I don't have to be that careful of my dynamic levels recording. If I suddenly yelp or talk loudly, clipping the camera's recording, this plugin will straighten it out and smooth off the corners just a bit so the loud bit isn't too objectionable.
+
+Since there's next to nothing to say about this plugin, nothing to do (no controls) and nothing to show (in a DAW, the interface is a blank rectangle or an empty line), the video's full of everything else I do to get the audio for my plugin-posting videos. If you'd like to see my setup, have at it. Otherwise, totally ignore it and just use the plugin :)
+
 ############ FireAmp is a bright, loud, tubey amp sim for leads and dirt guitar.
 
 FireAmp is sort of Marshally, compared to the other Airwindows amp sims. It is midrangey and doesn't give very heavy bass or chug, but it's got a characteristic high-mid tone and would work well for some kinds of guitars/tracks, or as layering to bring more of its quality to a larger mix.
@@ -2422,6 +2456,22 @@ But… it will produce largely the same depth and spatiality, with a different t
 My hope for these is distinctness, and kCathedral might not be the one to reach for as an 'all-purpose' reverb, because it's just a first steo into a larger, more echoey new world. The thing I like about it is, while it has a distinct sound, the spatiality sits in the mix roughly the same way a real Bricasti might, even while the texture is different (will be interesting to see if I can get closer to that butter tone, in future).
 
 All in all, a good day at work (okay, months) and I hope you enjoy kCathedral :)
+
+############ kCathedral2 is a giant reverby space modeled after the Bricasti Cathedral.
+
+Here we go: this should do nicely.
+
+This is still a 5x5 Householder matrix like the last time, but that's about the only similarity, and it's not at all the same matrix as last time. I am keeping that as kCathedral because I know full well that people find uses for things, but you can hear pretty plainly in my video on kCathedral2 that this is in another league (as they will all be, going forward).
+
+How was that done? A lot of it was time spent generating possible reverb matrices. There's a wide array of ways to evaluate how those become reverbs, none of which existed when I made the original kCathedral. I knew what I wanted but I had no way to measure it… and no way to generate thousands, millions, billions of possible options and automate the process of throwing out the metallic or lame ones. And that changed, over months of work on the tools.
+
+There's also new things that didn't exist in the more purist, uncompromising kCathedral. The new one uses one of my reverb delays differently, by turning it into a single solitary allpass (well, two, one per channel) and also adding the very subtlest of modulation to just that one allpass (not inside it, as a separate effect). None of this was present in the original, but even though it's only the tiniest amount, it's felt.
+
+But most of all, this time around it's using a completely different approach to early reflections. The real Bricasti Cathedral uses early reflections so strong I mistook them for dry signal being let in. Original kCathedral used a 3x3 matrix, very gingerly, trying not to be obvious because I thought I was hearing dry energy off the Bricasti, therefore the early reflections had to be much quieter, right? kCathedral2 uses a 4x4 matrix… which means it's able to literally use a patch from ClearCoat/CloudCoat, except without regeneration (the sound literally bounces away into the cathedral and doesn't even enter the deep reverb field). That's early reflections that can stand alone as their own reverb.
+
+It's subtle, but it's also where I was able to step away from the Bricasti sound and try to establish my own. I think you'll find that the deep room tone is about the same, and the depth of space, but I want those early reflections to be a lot more diffuse (but NOT allpassy), so I've scaled them up and spread them out. It should sound more like detail in the actual room rather than an obvious back wall, which I think will be more useful for how I'll be using it. And I've got a lot closer to that textural butter-sound of the real Bricasti, while retaining some of my own goals for the project.
+
+Welcome to kCathedral2. Oops, I did it again (this time more like what I intended for the first time). Thanks to my Patreon patrons, who are literally the reason I can persist at goals like this, and without whom I might have to stop halfway and not get to stuff like this. Hope you like it!
 
 ############ kChamberAR is a take on tape echo into chamber echo.
 
@@ -3502,6 +3552,24 @@ Or, you can take your bass that you want to be purer, and try to identify whethe
 I don’t know how clear all this is, because you probably don’t have this function laid out in this way, and it’s too subtle for normal plugin makers to be able to sell you. Any commercial plugin where turning it up doesn’t equal ‘more’ plus you can’t always hear what it does, is in big trouble. But I’m Patreon-supported so I don’t have to follow those rules, so I can give you Shape even if most people don’t get a big charge out of it and throw their money :)
 
 And so I have. Enjoy Shape. My hope is that it serves its useful purpose for those who need to tweak exactly this, as transparently as possible. And if you didn’t need to… maybe you just didn’t know it was a thing. It is now! :)
+
+############ ShortBuss chases second harmonic, to add or remove it.
+
+This plugin is a little hard to explain, as it doesn't do normal things.
+
+ShortBuss is a re-imagining of the original ShortBuss, that came before Righteous and perhaps even NC-17. It's a seed that created a lot of unusual, powerful Airwindows plugins, but it's taken on new powers in its current incarnation.
+
+It's all about asymmetry. ShortBuss will try to find imbalance in your waveform: even harmonics, more weight on one side than on the other. When it does, you can turn it up, to further augment that effect. I've learned that people are using Righteous to do this, liking the warmth of the bass and not minding the fact that the rest of Righteous doesn't care for that treatment. So, ShortBuss is there to specialize in that effect if you want it.
+
+Second harmonic can be hard to hear, and this is not an EQ, or even a saturation in any normal sense. So it might be a bit tricky to hear, but that's what it's doing (you will probably notice higher peaks if you do that, as well).
+
+But there's more: this time, you can apply reverse ShortBuss. Not only ShortBuss, but backwards! And then it'll fight even harmonics. It'll try to take them away. This might clean up the low end very slightly (it's not really set up to act like an EQ, what it takes from one polarity it'll put on the other).
+
+More interestingly, it might make for an interesting bass-conditioner. Like on a guitar going to heavy distortion. Or a bass-heavy mix heading to loudenation. It will do a conditioning effect that most likely doesn't exist elsewhere, because this is such a strange and hard to explain effect that it's unmarketable and can only exist in the world of open source and/or Airwindows.
+
+But then there's even more… because that same conditioning has eerie similarities to what might happen on the steel of a plate reverb when you bring the damper in real close, physically suppressing its lower frequencies in a way that's beyond simple EQ…
+
+ShortBuss is yours to play with, but it's also a neat addition to my toolbox, and I'm looking forward to using it in some unexpected places to bring sounds that aren't like usual sounds. I have no idea if you'll like it, but there's probably about three people who'll absolutely love it, and that's good enough for me. Enjoy :)
 
 ############ SideDull is like Sidepass, but a lowpass on the side channel. Treble-centerer.
 
